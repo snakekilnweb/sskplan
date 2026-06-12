@@ -1,0 +1,444 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>企劃書 AI 入口網站</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="login-view" id="loginView">
+        <div class="brand-panel">
+          <div class="vertical-copy left">PLAN LIVING PORTAL</div>
+          <div class="vertical-copy right">AI PROPOSAL 2026</div>
+          <div class="hero-blob">
+            <div class="brand-mark">AI</div>
+            <p class="eyebrow">Style of Living Proposal</p>
+            <h1>企劃書 AI 入口網站</h1>
+            <p>集中存放計畫書、分析內容、生成新企劃書，並快速輸出簡報與報告檔。</p>
+            <div class="feature-strip">
+              <span>文件庫</span><span>AI 分析</span><span>簡報生成</span><span>匯出中心</span>
+            </div>
+          </div>
+        </div>
+        <form class="login-card" id="loginForm">
+          <section class="geometry-note" aria-label="平台摘要">
+            <span class="shape square"></span>
+            <span class="shape circle"></span>
+            <span class="shape line"></span>
+            <p>Proposal Library</p>
+            <strong>計畫書存放、分析、編輯與匯出</strong>
+            <small>AI assisted writing workspace</small>
+          </section>
+          <div><p class="eyebrow">登入入口</p><h2>選擇使用者身分</h2></div>
+          <div class="role-switch" role="tablist" aria-label="登入角色">
+            <button type="button" class="role-btn active" data-role="customer">客戶</button>
+            <button type="button" class="role-btn" data-role="admin">管理者</button>
+          </div>
+          <label>帳號<input type="email" id="email" value="client@example.com" autocomplete="username" required /></label>
+          <label>密碼<input type="password" value="password" autocomplete="current-password" required /></label>
+          <button class="primary-btn" type="submit">登入系統</button>
+          <p class="hint">範例原型不會傳送資料，可直接登入查看功能流程。</p>
+        </form>
+      </section>
+      <section class="dashboard hidden" id="dashboardView">
+        <aside class="sidebar">
+          <div class="sidebar-brand"><div class="brand-mark small">AI</div><div><strong>企劃入口</strong><span id="roleLabel">客戶模式</span></div></div>
+          <div class="sidebar-user">
+            <span class="avatar">林</span>
+            <div><strong>企劃工作室</strong><small>今日 4 個任務待處理</small></div>
+          </div>
+          <nav>
+            <p class="nav-title">工作區</p>
+            <button class="nav-link active" data-view="overview"><span>01</span>儀表板</button>
+            <button class="nav-link" data-view="documents"><span>02</span>計畫書庫</button>
+            <button class="nav-link" data-view="editor"><span>03</span>AI 編輯器</button>
+            <button class="nav-link" data-view="slides"><span>04</span>簡報生成</button>
+            <button class="nav-link" data-view="exports"><span>05</span>匯出中心</button>
+            <button class="nav-link" data-view="closeout"><span>06</span>結案報告</button>
+            <p class="nav-title admin-only">管理</p>
+            <button class="nav-link admin-only" data-view="admin"><span>07</span>管理後台</button>
+          </nav>
+          <section class="cross-filter" aria-label="交叉比對搜尋">
+            <p class="nav-title">交叉比對搜尋</p>
+            <label>
+              公司分類
+              <select id="companyFilter">
+                <option value="">全部公司</option>
+                <option value="遠景顧問股份有限公司">遠景顧問股份有限公司</option>
+                <option value="城市創新基金會">城市創新基金會</option>
+                <option value="青創科技">青創科技</option>
+              </select>
+            </label>
+            <label>
+              公家部會
+              <select id="agencyFilter">
+                <option value="">全部部會</option>
+                <option value="經濟部">經濟部</option>
+                <option value="文化部">文化部</option>
+                <option value="數位發展部">數位發展部</option>
+              </select>
+            </label>
+            <div class="filter-actions">
+              <button type="button" class="mini-btn primary" id="compareBtn">比對搜尋</button>
+              <button type="button" class="mini-btn" id="clearCompareBtn">清除</button>
+            </div>
+            <small id="compareSummary">目前顯示全部文件</small>
+          </section>
+          <div class="sidebar-footer">
+            <small>AI Proposal System</small>
+            <button class="ghost-btn" id="logoutBtn">登出</button>
+          </div>
+        </aside>
+        <div class="workspace">
+          <header class="topbar">
+            <div><p class="eyebrow">目前專案</p><h2>智慧計畫書管理平台</h2></div>
+            <div class="topbar-actions">
+              <div class="search-box"><input type="search" placeholder="搜尋計畫書、標籤、客戶" /></div>
+              <button class="secondary-btn" data-action="upload">上傳</button>
+              <button class="primary-btn" data-action="analyze">AI 分析</button>
+            </div>
+          </header>
+          <section class="view active" id="overview">
+            <section class="style-banner">
+              <div>
+                <p class="eyebrow">Proposal Atmosphere</p>
+                <h3>把計畫書整理成可閱讀、可審查、可簡報的提案現場</h3>
+              </div>
+              <div class="banner-stamp">Fourth generation<br />AI Proposal Studio</div>
+            </section>
+            <div class="workbench-grid">
+              <section class="panel task-panel">
+                <div class="panel-head"><h3>今日工作區</h3><span class="status review">4 項待處理</span></div>
+                <div class="task-list">
+                  <label><input type="checkbox" /> 補齊「市場拓展計畫書」風險章節</label>
+                  <label><input type="checkbox" /> 產生政府補助案 12 頁簡報</label>
+                  <label><input type="checkbox" /> 匯出品牌年度行銷方案 PDF</label>
+                  <label><input type="checkbox" /> 上傳經濟部補助案發票與憑證</label>
+                  <label><input type="checkbox" /> 管理者審核城市創新基金會文件</label>
+                </div>
+              </section>
+              <section class="panel ai-flow">
+                <div class="panel-head"><h3>AI 任務流程</h3><button class="secondary-btn" data-action="analyze">開始</button></div>
+                <div class="flow-steps">
+                  <span>上傳</span><span>解析</span><span>分析</span><span>編輯</span><span>匯出</span>
+                </div>
+              </section>
+            </div>
+            <div class="metric-grid">
+              <article class="metric"><span>文件總數</span><strong>128</strong><small>本月新增 18 份</small></article>
+              <article class="metric"><span>AI 分析</span><strong>342</strong><small>平均節省 42 分鐘</small></article>
+              <article class="metric"><span>簡報產出</span><strong>57</strong><small>PPTX / PDF 可匯出</small></article>
+              <article class="metric"><span>待審文件</span><strong>9</strong><small>管理者可追蹤</small></article>
+            </div>
+            <div class="content-grid">
+              <section class="panel wide"><div class="panel-head"><h3>最近計畫書</h3><button class="secondary-btn" data-action="upload">上傳文件</button></div><div class="document-list" id="recentDocs"></div></section>
+              <section class="panel"><h3>AI 建議</h3><ul class="insight-list"><li>「市場拓展計畫」缺少風險與因應章節。</li><li>「政府補助案」可補強預期效益量化指標。</li><li>建議將 3 份行銷企劃統一套用企業模板。</li></ul></section>
+            </div>
+          </section>
+          <section class="view" id="documents">
+            <div class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Document Library</p>
+                  <h3>計畫書庫</h3>
+                </div>
+                <div class="button-row"><button class="secondary-btn" data-action="upload">新增上傳</button><button class="primary-btn" data-action="analyze">AI 分析</button></div>
+              </div>
+              <div class="library-tools">
+                <label>
+                  搜尋舊案 / 文件
+                  <input type="search" id="docSearch" placeholder="輸入計畫名稱、公司、部會、分類" />
+                </label>
+                <label>
+                  文件狀態
+                  <select id="docStatusFilter">
+                    <option value="active">待處理（預設）</option>
+                    <option value="">全部狀態</option>
+                    <option>草稿</option>
+                    <option>審核中</option>
+                    <option>退回修改</option>
+                    <option>已完成</option>
+                    <option>封存</option>
+                  </select>
+                </label>
+                <label>
+                  文件分類
+                  <select id="docCategoryFilter">
+                    <option value="">全部分類</option>
+                    <option>政府補助</option>
+                    <option>商業企劃</option>
+                    <option>行銷方案</option>
+                    <option>企業內部專案</option>
+                  </select>
+                </label>
+              </div>
+              <p class="library-summary" id="librarySummary">預設顯示草稿、審核中與退回修改文件。</p>
+              <div class="document-list expanded" id="docLibrary"></div>
+            </div>
+          </section>
+          <section class="view" id="editor">
+            <div class="editor-layout">
+              <section class="panel editor-control">
+                <h3>AI 編輯指令</h3>
+                <label>
+                  計畫名稱
+                  <select id="planSelect">
+                    <option value="市場拓展計畫">市場拓展計畫</option>
+                    <option value="政府補助申請企劃">政府補助申請企劃</option>
+                    <option value="智慧服務導入計畫">智慧服務導入計畫</option>
+                  </select>
+                </label>
+                <div class="year-reference">
+                  <label>
+                    參照年度
+                    <select id="referenceYear">
+                      <option>2025</option>
+                      <option>2024</option>
+                      <option>2023</option>
+                    </select>
+                  </label>
+                  <label>
+                    新企劃年度
+                    <select id="targetYear">
+                      <option>2026</option>
+                      <option>2027</option>
+                    </select>
+                  </label>
+                </div>
+                <label>企劃書模板<select id="templateSelect"><option>政府補助計畫</option><option>新產品上市企劃</option><option>年度行銷方案</option><option>企業內部專案</option></select></label>
+                <section class="template-location">
+                  <p class="eyebrow">Template Location</p>
+                  <strong id="planTemplateName">市場拓展年度企劃範本</strong>
+                  <span id="planTemplatePath">/templates/proposal/market-expansion/annual-plan.docx</span>
+                  <small id="planTemplateRule">制式章節：計畫背景、前年度成果、年度目標、執行策略、預算、KPI、風險控管。</small>
+                </section>
+                <section class="reference-card">
+                  <p class="eyebrow">Previous Year Context</p>
+                  <strong id="referenceTitle">2025 市場拓展計畫書</strong>
+                  <ul id="referencePoints">
+                    <li>延續 2025 年通路開發成果，強化重點市場轉換率。</li>
+                    <li>保留既有客群分析架構，新增年度 KPI 與預算配置。</li>
+                    <li>修正去年審查意見：補強量化效益與風險因應。</li>
+                  </ul>
+                </section>
+                <section class="budget-card admin-managed">
+                  <div class="panel-head">
+                    <div>
+                      <p class="eyebrow">Case Budget</p>
+                      <h3>本案經費設定</h3>
+                    </div>
+                    <span class="status done" id="budgetStatus">符合上限</span>
+                  </div>
+                  <div class="budget-grid">
+                    <label>總經費上限<input id="budgetTotal" type="number" value="1200000" /></label>
+                    <label>補助款上限<input id="budgetGrant" type="number" value="800000" /></label>
+                    <label>自籌款<input id="budgetSelf" type="number" value="400000" /></label>
+                  </div>
+                  <div class="budget-items" id="budgetItems"></div>
+                  <small id="budgetSummary">目前科目合計 NT$ 1,120,000，未超過總經費上限。</small>
+                </section>
+                <section class="sustainability-card admin-managed">
+                  <div class="panel-head">
+                    <div>
+                      <p class="eyebrow">SDGs / ESG</p>
+                      <h3>永續分析設定</h3>
+                    </div>
+                    <span class="status done" id="sustainabilityStatus">已啟用</span>
+                  </div>
+                  <label class="toggle-row"><input type="checkbox" id="enableSustainability" checked /> 生成企劃書時加入 SDGs / ESG 分析</label>
+                  <div class="sdg-grid" id="sdgGoals"></div>
+                  <div class="esg-grid">
+                    <label><input type="checkbox" value="E 環境" class="esgOption" checked /> E 環境</label>
+                    <label><input type="checkbox" value="S 社會" class="esgOption" checked /> S 社會</label>
+                    <label><input type="checkbox" value="G 治理" class="esgOption" /> G 治理</label>
+                  </div>
+                  <label>永續影響摘要<textarea id="sustainabilityImpact">請說明本計畫對社會參與、地方發展、資源效率與治理透明的正向影響。</textarea></label>
+                  <label>量化指標 / KPI<textarea id="sustainabilityKpi">參與人次、合作單位數、減少紙本輸出量、成果公開次數、滿意度。</textarea></label>
+                </section>
+                <label>編輯需求<textarea id="promptInput">請依照同計畫前一年度內容延伸，保留上下年度脈絡，並套用本計畫制式範本產生新版企劃書。</textarea></label><div class="button-row"><button class="primary-btn" id="generatePlanBtn">生成企劃書</button><button class="secondary-btn" id="rewriteBtn">改寫段落</button></div></section>
+              <section class="panel editor-panel"><div class="panel-head"><h3>企劃書草稿</h3><button class="secondary-btn" id="saveDraftBtn">儲存版本</button></div><textarea class="document-editor" id="draftOutput"></textarea></section>
+            </div>
+          </section>
+          <section class="view" id="slides">
+            <div class="panel"><div class="panel-head"><h3>簡報生成器</h3><button class="primary-btn" id="buildSlidesBtn">生成簡報大綱</button></div><div class="slide-options"><label>來源文件<select><option>市場拓展計畫書</option><option>政府補助申請企劃</option><option>品牌年度行銷方案</option></select></label><label>簡報風格<select><option>正式商務</option><option>政府提案</option><option>簡潔高層報告</option></select></label></div><div class="slides-grid" id="slidesGrid"></div></div>
+          </section>
+          <section class="view" id="exports">
+            <div class="panel"><div class="panel-head"><h3>匯出中心</h3><button class="secondary-btn" id="exportBtn">建立匯出任務</button></div><div class="export-list" id="exportList"></div></div>
+          </section>
+          <section class="view" id="closeout">
+            <div class="closeout-layout">
+              <section class="panel closeout-main">
+                <div class="panel-head">
+                  <div><p class="eyebrow">Project Closeout</p><h3>結案報告工作台</h3></div>
+                  <span class="status review" id="closeoutStatus">憑證整理中</span>
+                </div>
+                <div class="closeout-project">
+                  <label>
+                    補助案 / 案件
+                    <select id="closeoutProject">
+                      <option value="經濟部｜市場拓展計畫書">經濟部｜市場拓展計畫書</option>
+                      <option value="文化部｜政府補助申請企劃">文化部｜政府補助申請企劃</option>
+                      <option value="數位發展部｜智慧服務導入計畫">數位發展部｜智慧服務導入計畫</option>
+                    </select>
+                  </label>
+                  <label>
+                    結案期間
+                    <input type="text" value="2026-01-01 至 2026-06-30" />
+                  </label>
+                </div>
+                <div class="template-match">
+                  <div>
+                    <p class="eyebrow">Template Mapping</p>
+                    <strong id="matchedTemplate">經濟部補助案結案報告範本</strong>
+                    <small id="matchedTemplateDesc">系統會依案件所屬部會與案件類型自動套用章節、附件與格式規則。</small>
+                  </div>
+                  <button class="secondary-btn" type="button" data-view-target="admin">範本設定</button>
+                </div>
+                <div class="progress-track" aria-label="結案流程">
+                  <span class="done">計畫核定</span>
+                  <span class="done">成果整理</span>
+                  <span class="active">憑證上傳</span>
+                  <span>AI 生成報告</span>
+                  <span>送審匯出</span>
+                </div>
+                <div class="voucher-drop" id="voucherDrop">
+                  <strong>上傳發票、收據、付款證明或成果附件</strong>
+                  <p>憑證匯入時必須先選擇案件與憑證類型，系統會直接歸檔到該案件，避免不同案件混在一起。</p>
+                  <div class="voucher-import">
+                    <label>
+                      匯入到案件
+                      <select id="voucherProject">
+                        <option value="經濟部｜市場拓展計畫書">經濟部｜市場拓展計畫書</option>
+                        <option value="文化部｜政府補助申請企劃">文化部｜政府補助申請企劃</option>
+                        <option value="數位發展部｜智慧服務導入計畫">數位發展部｜智慧服務導入計畫</option>
+                      </select>
+                    </label>
+                    <label>
+                      憑證類型
+                      <select id="voucherType">
+                        <option>發票</option>
+                        <option>收據</option>
+                        <option>付款證明</option>
+                        <option>成果附件</option>
+                      </select>
+                    </label>
+                  </div>
+                  <button class="primary-btn" type="button" id="addVoucherBtn">新增憑證</button>
+                </div>
+                <div class="voucher-list" id="voucherList"></div>
+                <div class="photo-drop" id="photoDrop">
+                  <strong>上傳成果照片紀錄</strong>
+                  <p>照片也會依案件歸檔，結案報告可自動帶入照片名稱、拍攝階段與說明文字。</p>
+                  <div class="voucher-import">
+                    <label>
+                      匯入到案件
+                      <select id="photoProject">
+                        <option value="經濟部｜市場拓展計畫書">經濟部｜市場拓展計畫書</option>
+                        <option value="文化部｜政府補助申請企劃">文化部｜政府補助申請企劃</option>
+                        <option value="數位發展部｜智慧服務導入計畫">數位發展部｜智慧服務導入計畫</option>
+                      </select>
+                    </label>
+                    <label>
+                      照片階段
+                      <select id="photoStage">
+                        <option>執行前</option>
+                        <option>執行中</option>
+                        <option>成果完成</option>
+                        <option>活動紀錄</option>
+                      </select>
+                    </label>
+                  </div>
+                  <button class="primary-btn" type="button" id="addPhotoBtn">新增照片</button>
+                </div>
+                <div class="photo-list" id="photoList"></div>
+              </section>
+              <aside class="panel closeout-side">
+                <h3>結案檢核</h3>
+                <ul class="check-list" id="closeoutChecks">
+                  <li class="done">計畫摘要已建立</li>
+                  <li class="done">成果照片已上傳</li>
+                  <li>發票憑證需至少 3 筆</li>
+                  <li>成果照片需至少 2 張</li>
+                  <li class="done">SDGs / ESG 成果摘要已建立</li>
+                  <li>支出明細需完成分類</li>
+                </ul>
+                <button class="secondary-btn" type="button" id="generateCloseoutBtn">AI 生成結案報告書</button>
+                <button class="primary-btn" type="button" id="exportCloseoutBtn">匯出結案報告</button>
+              </aside>
+            </div>
+            <section class="panel report-preview">
+              <div class="panel-head"><h3>結案報告書預覽</h3><span class="status draft">草稿</span></div>
+              <textarea class="document-editor" id="closeoutReport"></textarea>
+            </section>
+          </section>
+          <section class="view" id="admin">
+            <div class="content-grid"><section class="panel wide"><h3>客戶與權限</h3><table><thead><tr><th>客戶</th><th>文件數</th><th>AI 用量</th><th>狀態</th></tr></thead><tbody><tr><td>遠景顧問股份有限公司</td><td>42</td><td>128 次</td><td><span class="status done">啟用</span></td></tr><tr><td>城市創新基金會</td><td>31</td><td>76 次</td><td><span class="status review">審核中</span></td></tr><tr><td>青創科技</td><td>55</td><td>138 次</td><td><span class="status done">啟用</span></td></tr></tbody></table></section><section class="panel"><h3>管理功能</h3><div class="admin-actions"><button class="secondary-btn">新增客戶</button><button class="secondary-btn">維護模板</button><button class="secondary-btn">查看 AI 紀錄</button><button class="secondary-btn">下載報表</button></div></section></div>
+            <section class="panel template-settings">
+              <div class="panel-head">
+                <div><p class="eyebrow">Access Control</p><h3>權限控管</h3></div>
+                <span class="status done">RBAC</span>
+              </div>
+              <table>
+                <thead><tr><th>資料/功能</th><th>客戶</th><th>管理者</th><th>說明</th></tr></thead>
+                <tbody>
+                  <tr><td>企劃書內容</td><td>可編輯自己的文件</td><td>可查看與審核</td><td>依公司隔離資料</td></tr>
+                  <tr><td>範本位置與制式章節</td><td>唯讀</td><td>可新增/修改</td><td>避免使用者誤改格式</td></tr>
+                  <tr><td>本案經費上限</td><td>唯讀或申請調整</td><td>可設定</td><td>AI 生成前讀取此規則</td></tr>
+                  <tr><td>SDGs / ESG 規則</td><td>唯讀或補充說明</td><td>可設定</td><td>管理者維護標準規則</td></tr>
+                  <tr><td>文件審核狀態</td><td>可送審</td><td>可改狀態</td><td>草稿、審核中、已完成、退回、封存</td></tr>
+                  <tr><td>憑證與照片</td><td>可上傳自己的案件</td><td>可審核與歸檔</td><td>依案件歸屬分類</td></tr>
+                </tbody>
+              </table>
+            </section>
+            <section class="panel template-settings">
+              <div class="panel-head">
+                <div><p class="eyebrow">Manual Permission</p><h3>手動權限設定</h3></div>
+                <button class="primary-btn" type="button" id="savePermissionBtn">儲存權限</button>
+              </div>
+              <div class="permission-list" id="permissionList"></div>
+            </section>
+            <section class="panel template-settings">
+              <div class="panel-head">
+                <div><p class="eyebrow">Document Review</p><h3>文件審核</h3></div>
+                <span class="status review">管理者權限</span>
+              </div>
+              <div class="review-list" id="reviewList"></div>
+            </section>
+            <section class="panel template-settings">
+              <div class="panel-head">
+                <div><p class="eyebrow">Closeout Templates</p><h3>結案報告範本對應設定</h3></div>
+                <button class="primary-btn" type="button" id="saveTemplateBtn">儲存範本設定</button>
+              </div>
+              <table>
+                <thead><tr><th>適用部會</th><th>案件類型</th><th>套用範本</th><th>必要附件</th></tr></thead>
+                <tbody>
+                  <tr><td>經濟部</td><td>補助案 / 市場拓展</td><td>經濟部補助案結案報告範本</td><td>發票、付款證明、成果照片、支出明細</td></tr>
+                  <tr><td>文化部</td><td>文化活動 / 推廣案</td><td>文化部成果結案報告範本</td><td>收據、活動紀錄、成果冊、授權文件</td></tr>
+                  <tr><td>數位發展部</td><td>系統導入 / 數位服務</td><td>數位服務導入結案範本</td><td>發票、驗收紀錄、系統截圖、維運說明</td></tr>
+                </tbody>
+              </table>
+            </section>
+            <section class="panel template-settings">
+              <div class="panel-head">
+                <div><p class="eyebrow">Sustainability Rules</p><h3>SDGs / ESG 分析規則</h3></div>
+                <button class="primary-btn" type="button" id="saveSustainabilityBtn">儲存分析規則</button>
+              </div>
+              <table>
+                <thead><tr><th>案件類型</th><th>常用 SDGs</th><th>ESG 面向</th><th>必要指標</th></tr></thead>
+                <tbody>
+                  <tr><td>市場拓展</td><td>SDG 8、9、12、17</td><td>S 社會、G 治理</td><td>合作單位數、就業/商機、公開成果</td></tr>
+                  <tr><td>政府補助</td><td>SDG 4、8、10、11、17</td><td>S 社會、G 治理</td><td>參與人次、弱勢觸及、滿意度</td></tr>
+                  <tr><td>數位服務導入</td><td>SDG 9、11、12、16</td><td>E 環境、G 治理</td><td>流程減量、紙本減量、資安/治理</td></tr>
+                </tbody>
+              </table>
+            </section>
+          </section>
+        </div>
+      </section>
+    </main>
+    <div class="toast" id="toast"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
