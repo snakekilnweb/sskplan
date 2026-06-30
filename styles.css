@@ -1067,6 +1067,53 @@ nav {
   align-content: start;
 }
 
+.panel-head.compact {
+  margin-bottom: 8px;
+}
+
+.closeout-reminders {
+  display: grid;
+  gap: 12px;
+}
+
+.reminder-list {
+  display: grid;
+  gap: 10px;
+}
+
+.reminder-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.reminder-item strong {
+  color: var(--brand-dark);
+}
+
+.reminder-item small {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.reminder-item.urgent {
+  border-color: #e3a56a;
+  background: #fff6e8;
+}
+
+.reminder-item.overdue {
+  border-color: #d88c7a;
+  background: #fff0ed;
+}
+
+.reminder-item.ready {
+  border-color: #b9d9c8;
+  background: #eef8f2;
+}
+
 .closeout-project {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(240px, 0.6fr);

@@ -37,9 +37,9 @@
             <button type="button" class="role-btn" data-role="admin">管理者</button>
           </div>
           <label>帳號<input type="email" id="email" value="client@example.com" autocomplete="username" required /></label>
-          <label>密碼<input type="password" value="password" autocomplete="current-password" required /></label>
+          <label>密碼<input type="password" id="password" value="" autocomplete="current-password" required /></label>
           <button class="primary-btn" type="submit">登入系統</button>
-          <p class="hint">範例原型不會傳送資料，可直接登入查看功能流程。</p>
+          <p class="hint">請使用 Supabase Authentication 建立的帳號登入，例如 admin@example.com 或 client@example.com。</p>
         </form>
       </section>
       <section class="dashboard hidden" id="dashboardView">
@@ -355,6 +355,25 @@
                 <div class="photo-list" id="photoList"></div>
               </section>
               <aside class="panel closeout-side">
+                <section class="closeout-reminders">
+                  <div class="panel-head compact">
+                    <div>
+                      <p class="eyebrow">Closeout Reminder</p>
+                      <h3>結案前時間提醒</h3>
+                    </div>
+                    <span class="status review" id="reminderSummary">待檢查</span>
+                  </div>
+                  <label>
+                    提醒門檻
+                    <select id="reminderLeadDays">
+                      <option value="60">結案前 60 天</option>
+                      <option value="30" selected>結案前 30 天</option>
+                      <option value="14">結案前 14 天</option>
+                      <option value="7">結案前 7 天</option>
+                    </select>
+                  </label>
+                  <div class="reminder-list" id="closeoutReminderList"></div>
+                </section>
                 <h3>結案檢核</h3>
                 <ul class="check-list" id="closeoutChecks">
                   <li class="done">計畫摘要已建立</li>
@@ -439,6 +458,7 @@
       </section>
     </main>
     <div class="toast" id="toast"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./app.js"></script>
   </body>
 </html>
