@@ -1,826 +1,784 @@
-const state = {
-  role: "customer",
-  filters: { company: "", agency: "", search: "", status: "active", category: "" },
-  voucherCount: 3,
-  permissions: {
-    proposal: { label: "企劃書內容", note: "撰寫、改寫與儲存企劃書", customer: { read: true, edit: true, approve: false }, admin: { read: true, edit: true, approve: true } },
-    budget: { label: "本案經費設定", note: "總經費、補助款、自籌款與科目上限", customer: { read: true, edit: false, approve: false }, admin: { read: true, edit: true, approve: true } },
-    sustainability: { label: "SDGs / ESG 規則", note: "永續目標、ESG 面向與 KPI", customer: { read: true, edit: false, approve: false }, admin: { read: true, edit: true, approve: true } },
-    closeout: { label: "結案附件", note: "憑證、照片與結案報告", customer: { read: true, edit: true, approve: false }, admin: { read: true, edit: true, approve: true } },
-    review: { label: "文件審核狀態", note: "草稿、審核中、已完成、退回、封存", customer: { read: true, edit: false, approve: false }, admin: { read: true, edit: true, approve: true } },
-    templates: { label: "範本與系統規則", note: "企劃書範本、結案範本與分析規則", customer: { read: true, edit: false, approve: false }, admin: { read: true, edit: true, approve: true } }
-  },
-  documents: [
-    { title: "市場拓展計畫書", owner: "遠景顧問股份有限公司", agency: "經濟部", category: "商業企劃", updated: "2026-06-01", status: "審核中", statusClass: "review" },
-    { title: "政府補助申請企劃", owner: "城市創新基金會", agency: "文化部", category: "政府補助", updated: "2026-05-29", status: "已完成", statusClass: "done" },
-    { title: "品牌年度行銷方案", owner: "青創科技", agency: "數位發展部", category: "行銷方案", updated: "2026-05-26", status: "草稿", statusClass: "draft" },
-    { title: "地方創生提案書", owner: "城市創新基金會", agency: "經濟部", category: "政府補助", updated: "2026-05-20", status: "審核中", statusClass: "review" },
-    { title: "智慧服務導入計畫", owner: "遠景顧問股份有限公司", agency: "數位發展部", category: "企業內部專案", updated: "2026-05-18", status: "草稿", statusClass: "draft" },
-    { title: "2024 市場拓展結案資料", owner: "遠景顧問股份有限公司", agency: "經濟部", category: "商業企劃", updated: "2025-01-18", status: "封存", statusClass: "archived" }
-  ],
-  vouchers: [
-    { project: "經濟部｜市場拓展計畫書", name: "活動場地租借發票.pdf", type: "發票", amount: "NT$ 32,000", status: "已分類" },
-    { project: "經濟部｜市場拓展計畫書", name: "成果手冊印刷收據.jpg", type: "收據", amount: "NT$ 18,500", status: "待確認" },
-    { project: "文化部｜政府補助申請企劃", name: "活動紀錄成果冊.pdf", type: "成果附件", amount: "-", status: "已分類" }
-  ],
-  photos: [
-    { project: "經濟部｜市場拓展計畫書", name: "成果發表現場_01.jpg", stage: "活動紀錄", note: "成果發表會與合作單位交流紀錄" },
-    { project: "經濟部｜市場拓展計畫書", name: "展示攤位完成照_02.jpg", stage: "成果完成", note: "市場拓展展示素材與攤位完工照片" },
-    { project: "文化部｜政府補助申請企劃", name: "工作坊執行中_01.jpg", stage: "執行中", note: "文化推廣工作坊民眾參與紀錄" }
-  ],
-  exports: [
-    { name: "市場拓展計畫書_分析報告.pdf", type: "PDF", time: "今天 10:30" },
-    { name: "政府補助申請企劃_簡報.pptx", type: "PPTX", time: "昨天 16:45" },
-    { name: "品牌年度行銷方案_新版.docx", type: "DOCX", time: "2026-05-30" }
-  ]
-};
+const SUPABASE_URL = "https://ddyrkfoatcxccgqqkowb.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeXJrZm9hdGN4Y2NncXFrb3diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzA1MDIsImV4cCI6MjA5Njg0NjUwMn0.ntR5h1tDRHgs30PMDoZg_32kRqfIKrR8-At3wOUzczY";
 
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (selector) => document.querySelector(selector);
 
-const loginView = $("#loginView");
-const dashboardView = $("#dashboardView");
-const loginForm = $("#loginForm");
-const roleLabel = $("#roleLabel");
-const toast = $("#toast");
-const draftOutput = $("#draftOutput");
-const companyFilter = $("#companyFilter");
-const agencyFilter = $("#agencyFilter");
-const compareSummary = $("#compareSummary");
-const docSearch = $("#docSearch");
-const docStatusFilter = $("#docStatusFilter");
-const docCategoryFilter = $("#docCategoryFilter");
-const librarySummary = $("#librarySummary");
-const permissionList = $("#permissionList");
-const voucherList = $("#voucherList");
-const photoList = $("#photoList");
-const closeoutReport = $("#closeoutReport");
-const closeoutStatus = $("#closeoutStatus");
-const closeoutProject = $("#closeoutProject");
-const voucherProject = $("#voucherProject");
-const voucherType = $("#voucherType");
-const photoProject = $("#photoProject");
-const photoStage = $("#photoStage");
-const matchedTemplate = $("#matchedTemplate");
-const matchedTemplateDesc = $("#matchedTemplateDesc");
-const planSelect = $("#planSelect");
-const referenceYear = $("#referenceYear");
-const targetYear = $("#targetYear");
-const planTemplateName = $("#planTemplateName");
-const planTemplatePath = $("#planTemplatePath");
-const planTemplateRule = $("#planTemplateRule");
-const referenceTitle = $("#referenceTitle");
-const referencePoints = $("#referencePoints");
-const budgetTotal = $("#budgetTotal");
-const budgetGrant = $("#budgetGrant");
-const budgetSelf = $("#budgetSelf");
-const budgetItems = $("#budgetItems");
-const budgetSummary = $("#budgetSummary");
-const budgetStatus = $("#budgetStatus");
-const enableSustainability = $("#enableSustainability");
-const sdgGoals = $("#sdgGoals");
-const sustainabilityStatus = $("#sustainabilityStatus");
-const sustainabilityImpact = $("#sustainabilityImpact");
-const sustainabilityKpi = $("#sustainabilityKpi");
-
-const closeoutTemplateMap = {
-  "經濟部｜市場拓展計畫書": { name: "經濟部補助案結案報告範本", required: "發票、付款證明、成果照片、支出明細" },
-  "文化部｜政府補助申請企劃": { name: "文化部成果結案報告範本", required: "收據、活動紀錄、成果冊、授權文件" },
-  "數位發展部｜智慧服務導入計畫": { name: "數位服務導入結案範本", required: "發票、驗收紀錄、系統截圖、維運說明" }
+const STATUS_LABELS = {
+  draft: "草稿",
+  reviewing: "審核中",
+  pending: "審核中",
+  returned: "退回修改",
+  completed: "已完成",
+  archived: "封存",
+  active: "進行中"
 };
 
-const proposalTemplateMap = {
-  "市場拓展計畫": {
-    templateName: "市場拓展年度企劃範本",
-    path: "/templates/proposal/market-expansion/annual-plan.docx",
-    sections: "計畫背景、前年度成果、年度目標、執行策略、預算、KPI、風險控管",
-    references: {
-      "2025": ["延續 2025 年通路開發成果，強化重點市場轉換率。", "保留既有客群分析架構，新增年度 KPI 與預算配置。", "修正去年審查意見：補強量化效益與風險因應。"],
-      "2024": ["延續 2024 年市場調查架構，將試辦成果轉為正式推廣策略。", "保留競品分析與通路盤點資料，更新年度銷售目標。", "新增補助審查常見問題回應。"],
-      "2023": ["沿用 2023 年初版市場定位，補上後續成果佐證。", "延伸既有品牌溝通主軸，調整為年度推廣版本。", "加強預算與效益之間的對應說明。"]
-    }
-  },
-  "政府補助申請企劃": {
-    templateName: "政府補助案申請範本",
-    path: "/templates/proposal/government-grant/application-standard.docx",
-    sections: "計畫緣起、政策連結、執行方法、工作項目、經費表、預期效益、永續規劃",
-    references: {
-      "2025": ["延續 2025 年政策對應架構，補強公共效益與量化指標。", "保留審查委員建議回覆，調整成果驗證方式。", "新增跨單位合作與後續維運規劃。"],
-      "2024": ["延續 2024 年補助申請格式，更新政策重點與服務對象。", "將試辦成果轉為正式推動計畫。", "補上支出合理性與附件佐證。"],
-      "2023": ["沿用 2023 年問題定義與需求分析，更新執行策略。", "保留既有利害關係人分析。", "新增年度工作期程與風險控管。"]
-    }
-  },
-  "智慧服務導入計畫": {
-    templateName: "數位服務導入企劃範本",
-    path: "/templates/proposal/digital-service/implementation-plan.docx",
-    sections: "現況分析、系統需求、導入範圍、建置時程、驗收標準、維運計畫、資訊安全",
-    references: {
-      "2025": ["延續 2025 年系統導入成果，加入第二階段功能擴充。", "保留使用者回饋與操作流程優化方向。", "補強資安、維運與驗收標準。"],
-      "2024": ["延續 2024 年需求盤點結果，調整導入優先順序。", "保留系統架構說明，更新成本與維護規劃。", "新增教育訓練與上線支援。"],
-      "2023": ["沿用 2023 年數位轉型目標，補上導入效益。", "延伸既有流程改善建議。", "新增資料治理與權限控管章節。"]
+const STATUS_CLASS = {
+  draft: "draft",
+  reviewing: "review",
+  pending: "review",
+  returned: "review",
+  completed: "done",
+  archived: "archived",
+  active: "review"
+};
+
+const state = {
+  role: "customer",
+  session: null,
+  profile: null,
+  projects: [],
+  documents: [],
+  closeoutReports: [],
+  budgetSettings: [],
+  budgetItems: [],
+  sustainabilitySettings: [],
+  vouchers: [],
+  photos: [],
+  exports: [
+    { name: "文化推廣補助計畫書.pdf", type: "PDF", time: "今天" },
+    { name: "文化推廣補助簡報.pptx", type: "PPTX", time: "昨天" }
+  ],
+  filters: { company: "", agency: "", search: "", status: "active", category: "" },
+  permissions: {
+    proposal: {
+      label: "企劃書內容",
+      note: "客戶可編輯草稿，管理者可審核。",
+      customer: { read: true, edit: true, approve: false },
+      admin: { read: true, edit: true, approve: true }
+    },
+    budget: {
+      label: "經費設定",
+      note: "每案經費上限由管理者維護。",
+      customer: { read: true, edit: false, approve: false },
+      admin: { read: true, edit: true, approve: true }
+    },
+    sustainability: {
+      label: "SDGs / ESG",
+      note: "管理者維護分析規則，客戶可補充內容。",
+      customer: { read: true, edit: false, approve: false },
+      admin: { read: true, edit: true, approve: true }
+    },
+    closeout: {
+      label: "結案報告",
+      note: "客戶可整理草稿，管理者負責審核。",
+      customer: { read: true, edit: true, approve: false },
+      admin: { read: true, edit: true, approve: true }
+    },
+    templates: {
+      label: "範本與格式",
+      note: "範本避免誤改，僅管理者可維護。",
+      customer: { read: true, edit: false, approve: false },
+      admin: { read: true, edit: true, approve: true }
     }
   }
 };
 
-const budgetSettings = {
-  "市場拓展計畫": {
-    total: 1200000,
-    grant: 800000,
-    self: 400000,
-    items: [
-      { name: "人事費", limit: 280000 },
-      { name: "行銷推廣費", limit: 320000 },
-      { name: "場地費", limit: 120000 },
-      { name: "印刷製作費", limit: 90000 },
-      { name: "委外服務費", limit: 260000 },
-      { name: "行政雜支", limit: 50000 }
-    ]
-  },
-  "政府補助申請企劃": {
-    total: 850000,
-    grant: 600000,
-    self: 250000,
-    items: [
-      { name: "講師費", limit: 160000 },
-      { name: "活動執行費", limit: 220000 },
-      { name: "場地設備費", limit: 130000 },
-      { name: "宣傳費", limit: 90000 },
-      { name: "成果製作費", limit: 150000 },
-      { name: "行政管理費", limit: 60000 }
-    ]
-  },
-  "智慧服務導入計畫": {
-    total: 2000000,
-    grant: 1500000,
-    self: 500000,
-    items: [
-      { name: "系統建置費", limit: 820000 },
-      { name: "顧問服務費", limit: 360000 },
-      { name: "教育訓練費", limit: 160000 },
-      { name: "資安檢測費", limit: 180000 },
-      { name: "維運服務費", limit: 280000 },
-      { name: "專案管理費", limit: 120000 }
-    ]
+const demoProjects = [
+  {
+    id: "demo-project",
+    company_id: "demo-company",
+    name: "文化推廣補助計畫",
+    year: 2026,
+    project_type: "文化補助",
+    status: "draft",
+    end_date: "2026-07-31",
+    description: "用於測試計畫書生成、經費設定、SDGs/ESG、憑證、照片與結案報告流程。"
   }
-};
-
-const sdgLabels = [
-  "SDG 1 消除貧窮", "SDG 2 消除飢餓", "SDG 3 健康福祉", "SDG 4 優質教育", "SDG 5 性別平權",
-  "SDG 6 淨水衛生", "SDG 7 可負擔能源", "SDG 8 就業與經濟成長", "SDG 9 產業創新", "SDG 10 減少不平等",
-  "SDG 11 永續城市", "SDG 12 責任消費生產", "SDG 13 氣候行動", "SDG 14 海洋生態", "SDG 15 陸域生態",
-  "SDG 16 和平正義制度", "SDG 17 夥伴關係"
 ];
 
-const sustainabilitySettings = {
-  "市場拓展計畫": {
-    sdgs: ["SDG 8 就業與經濟成長", "SDG 9 產業創新", "SDG 12 責任消費生產", "SDG 17 夥伴關係"],
-    esg: ["S 社會", "G 治理"],
-    impact: "促進在地產業合作與市場機會，建立透明成果揭露與夥伴協作機制。",
-    kpi: "合作單位數、商機媒合件數、公開成果次數、參與企業滿意度。"
-  },
-  "政府補助申請企劃": {
-    sdgs: ["SDG 4 優質教育", "SDG 8 就業與經濟成長", "SDG 10 減少不平等", "SDG 11 永續城市", "SDG 17 夥伴關係"],
-    esg: ["S 社會", "G 治理"],
-    impact: "提升公共參與、知識推廣與資源可近性，強化補助成果揭露。",
-    kpi: "參與人次、弱勢或地方觸及數、活動場次、成果公開次數。"
-  },
-  "智慧服務導入計畫": {
-    sdgs: ["SDG 9 產業創新", "SDG 11 永續城市", "SDG 12 責任消費生產", "SDG 16 和平正義制度"],
-    esg: ["E 環境", "G 治理"],
-    impact: "透過數位化降低紙本與重複作業，提升流程透明度、資料治理與服務效率。",
-    kpi: "紙本減量、流程節省時數、系統使用率、資安檢核完成率。"
+const demoDocuments = [
+  {
+    id: "demo-document",
+    project_id: "demo-project",
+    title: "文化推廣補助計畫書草稿",
+    year: 2026,
+    version: 1,
+    status: "draft",
+    content:
+      "一、計畫緣起\n本計畫旨在推動地方文化參與與藝文教育普及。\n\n二、計畫目標\n1. 辦理系列文化推廣活動。\n2. 建立地方社群與藝文團隊合作機制。\n3. 將 SDGs 與 ESG 分析納入計畫效益。"
   }
-};
-
-const baseDraft = `一、計畫背景
-本計畫延續既有執行成果，依據新年度政策方向、市場需求與內部資源配置，提出可執行且可衡量的年度企劃。
-
-二、計畫目標
-1. 延續前年度成果並轉化為新年度執行策略。
-2. 補強審查意見中提及的量化效益、預算合理性與風險控管。
-3. 依指定範本完成制式章節與附件內容。
-
-三、執行項目
-- 前年度成果盤點
-- 新年度策略規劃
-- 預算與時程安排
-- KPI 與預期效益設定
-
-四、預期效益
-透過年度銜接與制式範本管理，降低重複撰寫成本，並讓新企劃書在邏輯、格式與審查資料上保持一致。`;
-
-const closeoutDraft = `結案報告書
-
-一、案件基本資料
-案件名稱：經濟部｜市場拓展計畫書
-執行期間：2026-01-01 至 2026-06-30
-執行單位：遠景顧問股份有限公司
-
-二、計畫執行成果
-本案已完成市場資料蒐集、提案內容優化、推廣素材製作與成果彙整。執行期間依核定計畫推動各項工作，並完成對應成果文件與佐證資料歸檔。
-
-三、經費與憑證整理
-目前已上傳場地租借發票、印刷收據與相關付款證明。系統已依發票、收據、付款證明及成果附件進行初步分類，後續可由管理者進行審核確認。
-
-四、照片紀錄
-系統已彙整本案成果照片，包含執行中、活動紀錄與成果完成等階段，可作為結案報告附件與成果佐證。
-
-五、效益說明
-本案協助提升提案資料完整度，縮短文件彙整與簡報製作時間，並建立可追蹤的結案資料流程。
-
-六、附件清單
-1. 發票與收據憑證
-2. 成果照片與活動紀錄
-3. 支出明細表
-4. 計畫成果摘要`;
+];
 
 function showToast(message) {
+  const toast = $("#toast");
   toast.textContent = message;
   toast.classList.add("show");
-  window.setTimeout(() => toast.classList.remove("show"), 2400);
+  window.setTimeout(() => toast.classList.remove("show"), 2600);
 }
 
-function getFilteredDocuments() {
-  return state.documents.filter((doc) => {
-    const matchesCompany = !state.filters.company || doc.owner === state.filters.company;
-    const matchesAgency = !state.filters.agency || doc.agency === state.filters.agency;
-    const matchesCategory = !state.filters.category || doc.category === state.filters.category;
-    const query = state.filters.search.trim().toLowerCase();
-    const searchable = `${doc.title} ${doc.owner} ${doc.agency} ${doc.category} ${doc.status}`.toLowerCase();
-    const matchesSearch = !query || searchable.includes(query);
-    const activeStatuses = ["草稿", "審核中", "退回修改"];
+function formatDate(value) {
+  if (!value) return "尚未更新";
+  return new Intl.DateTimeFormat("zh-TW", { dateStyle: "medium" }).format(new Date(value));
+}
+
+function formatMoney(value) {
+  return `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
+}
+
+function statusLabel(status) {
+  return STATUS_LABELS[status] || status || "草稿";
+}
+
+function statusClass(status) {
+  return STATUS_CLASS[status] || "draft";
+}
+
+function projectById(projectId) {
+  return state.projects.find((project) => project.id === projectId) || {};
+}
+
+function getDisplayDocuments() {
+  const documents = state.documents.length ? state.documents : demoDocuments;
+  const query = state.filters.search.trim().toLowerCase();
+  const activeStatuses = ["draft", "reviewing", "pending", "returned", "active"];
+
+  return documents.filter((doc) => {
+    const project = projectById(doc.project_id);
+    const text = `${doc.title || ""} ${project.name || ""} ${project.project_type || ""} ${doc.status || ""}`.toLowerCase();
+    const matchesSearch = !query || text.includes(query);
     const matchesStatus =
       !state.filters.status ||
-      (state.filters.status === "active" ? activeStatuses.includes(doc.status) : doc.status === state.filters.status);
-    return matchesCompany && matchesAgency && matchesCategory && matchesSearch && matchesStatus;
+      (state.filters.status === "active" ? activeStatuses.includes(doc.status || "draft") : statusLabel(doc.status) === state.filters.status);
+    const matchesCategory = !state.filters.category || project.project_type === state.filters.category;
+    return matchesSearch && matchesStatus && matchesCategory;
   });
-}
-
-function getActiveDocuments() {
-  return state.documents.filter((doc) => ["草稿", "審核中", "退回修改"].includes(doc.status));
-}
-
-function updateCompareSummary(count) {
-  const company = state.filters.company || "全部公司";
-  const agency = state.filters.agency || "全部部會";
-  compareSummary.textContent = `${company} × ${agency}：${count} 份文件`;
 }
 
 function renderDocuments(targetId, limit, useFilters = false) {
   const target = $(`#${targetId}`);
-  const sourceDocs = useFilters ? getFilteredDocuments() : getActiveDocuments();
-  const docs = typeof limit === "number" ? sourceDocs.slice(0, limit) : sourceDocs;
+  if (!target) return;
+
+  const source = useFilters ? getDisplayDocuments() : getDisplayDocuments().slice(0, 3);
+  const docs = typeof limit === "number" ? source.slice(0, limit) : source;
 
   if (!docs.length) {
-    target.innerHTML = `<article class="doc-row"><div><strong>沒有符合條件的文件</strong><div class="meta">請調整搜尋、狀態、分類、公司或公家部會條件後重新篩選。</div></div></article>`;
-    updateCompareSummary(0);
+    target.innerHTML = `
+      <article class="doc-row">
+        <div>
+          <strong>目前沒有符合條件的文件</strong>
+          <div class="meta">請調整搜尋條件，或先新增一份企劃書草稿。</div>
+        </div>
+      </article>`;
     updateLibrarySummary(0);
     return;
   }
 
-  target.innerHTML = docs.map((doc) => `
-    <article class="doc-row">
-      <div>
-        <strong>${doc.title}</strong>
-        <div class="meta">${doc.owner} · ${doc.agency} · ${doc.category} · 更新 ${doc.updated}</div>
-      </div>
-      <span class="status ${doc.statusClass}">${doc.status}</span>
-    </article>
-  `).join("");
+  target.innerHTML = docs
+    .map((doc) => {
+      const project = projectById(doc.project_id);
+      return `
+        <article class="doc-row">
+          <div>
+            <strong>${doc.title || "未命名企劃書"}</strong>
+            <div class="meta">${project.name || "未指定專案"} ｜ ${project.project_type || "未分類"} ｜ ${formatDate(doc.updated_at || doc.created_at)}</div>
+          </div>
+          <span class="status ${statusClass(doc.status)}">${statusLabel(doc.status)}</span>
+        </article>`;
+    })
+    .join("");
 
-  if (useFilters) {
-    updateCompareSummary(sourceDocs.length);
-    updateLibrarySummary(sourceDocs.length);
-  }
+  updateLibrarySummary(docs.length);
 }
 
 function updateLibrarySummary(count) {
+  const librarySummary = $("#librarySummary");
   if (!librarySummary) return;
-  const statusLabel = docStatusFilter.value === "active" ? "待處理" : (docStatusFilter.value || "全部狀態");
-  const categoryLabel = docCategoryFilter.value || "全部分類";
-  const query = docSearch.value.trim() ? `，搜尋「${docSearch.value.trim()}」` : "";
-  librarySummary.textContent = `${statusLabel} × ${categoryLabel}${query}：${count} 份文件`;
+
+  const status = $("#docStatusFilter")?.value || "全部狀態";
+  const category = $("#docCategoryFilter")?.value || "全部分類";
+  librarySummary.textContent = `${status === "active" ? "待處理" : status || "全部狀態"} ｜ ${category}，共 ${count} 份文件。`;
 }
 
-function statusClassFor(status) {
-  if (status === "已完成") return "done";
-  if (status === "草稿") return "draft";
-  if (status === "封存") return "archived";
-  return "review";
-}
+function renderProjectOptions() {
+  const projects = state.projects.length ? state.projects : demoProjects;
+  const optionHtml = projects
+    .map((project) => `<option value="${project.id}">${project.name}</option>`)
+    .join("");
 
-function renderReviewList() {
-  const reviewList = $("#reviewList");
-  reviewList.innerHTML = state.documents.map((doc, index) => `
-    <article class="review-row">
-      <div>
-        <strong>${doc.title}</strong>
-        <div class="meta">${doc.owner} · ${doc.agency} · ${doc.category} · 更新 ${doc.updated}</div>
-      </div>
-      <label>
-        文件狀態
-        <select class="review-status" data-index="${index}">
-          <option ${doc.status === "草稿" ? "selected" : ""}>草稿</option>
-          <option ${doc.status === "審核中" ? "selected" : ""}>審核中</option>
-          <option ${doc.status === "已完成" ? "selected" : ""}>已完成</option>
-          <option ${doc.status === "退回修改" ? "selected" : ""}>退回修改</option>
-          <option ${doc.status === "封存" ? "selected" : ""}>封存</option>
-        </select>
-      </label>
-    </article>
-  `).join("");
-
-  reviewList.querySelectorAll(".review-status").forEach((select) => {
-    select.addEventListener("change", () => {
-      const doc = state.documents[Number(select.dataset.index)];
-      doc.status = select.value;
-      doc.statusClass = statusClassFor(select.value);
-      renderDocuments("recentDocs", 3);
-      renderDocuments("docLibrary", undefined, true);
-      renderReviewList();
-      showToast(`已更新「${doc.title}」狀態`);
-    });
-  });
-  applyPermissions();
-}
-
-function renderPermissionList() {
-  permissionList.innerHTML = `
-    <div class="permission-row header">
-      <div>功能模組</div>
-      <div>客戶讀取</div>
-      <div>客戶編輯</div>
-      <div>客戶審核</div>
-      <div>管理讀取</div>
-      <div>管理編輯</div>
-      <div>管理審核</div>
-    </div>
-    ${Object.entries(state.permissions).map(([key, item]) => `
-      <article class="permission-row">
-        <div><strong>${item.label}</strong><small>${item.note}</small></div>
-        ${["customer", "admin"].flatMap((role) => ["read", "edit", "approve"].map((action) => `
-          <label class="permission-check" title="${role}-${action}">
-            <input type="checkbox" data-module="${key}" data-role="${role}" data-action="${action}" ${item[role][action] ? "checked" : ""} />
-          </label>
-        `)).join("")}
-      </article>
-    `).join("")}
-  `;
-
-  permissionList.querySelectorAll("input").forEach((input) => {
-    input.addEventListener("change", () => {
-      const item = state.permissions[input.dataset.module];
-      item[input.dataset.role][input.dataset.action] = input.checked;
-    });
+  ["#planSelect", "#closeoutProject", "#voucherProject", "#photoProject"].forEach((selector) => {
+    const select = $(selector);
+    if (select) select.innerHTML = optionHtml;
   });
 }
 
-function renderExports() {
-  $("#exportList").innerHTML = state.exports.map((item) => `
-    <article class="export-row">
-      <div><strong>${item.name}</strong><div class="meta">${item.type} · ${item.time}</div></div>
-      <button class="secondary-btn" data-action="download">下載</button>
-    </article>
-  `).join("");
+function renderBudgets() {
+  const budget = state.budgetSettings[0];
+  const items = state.budgetItems;
+
+  $("#budgetTotal").value = budget?.total_budget_limit || 1000000;
+  $("#budgetGrant").value = budget?.grant_limit || 800000;
+  $("#budgetSelf").value = budget?.self_funding || 200000;
+
+  const budgetItems = $("#budgetItems");
+  budgetItems.innerHTML = (items.length
+    ? items
+    : [
+        { item_name: "人事費", limit_amount: 300000 },
+        { item_name: "場地費", limit_amount: 200000 },
+        { item_name: "行銷宣傳費", limit_amount: 150000 },
+        { item_name: "材料費", limit_amount: 200000 }
+      ])
+    .map(
+      (item) => `
+        <label>${item.item_name || item.name}
+          <input type="number" value="${item.limit_amount || item.planned_amount || item.limit || 0}" data-name="${item.item_name || item.name}" />
+        </label>`
+    )
+    .join("");
+
+  budgetItems.querySelectorAll("input").forEach((input) => input.addEventListener("input", updateBudgetSummary));
+  updateBudgetSummary();
 }
 
-function renderSlides() {
-  const slides = [
-    ["01", "封面", "計畫名稱、提案單位、日期"],
-    ["02", "背景與需求", "說明現況痛點與目標族群"],
-    ["03", "解決方案", "平台功能、導入方式與使用情境"],
-    ["04", "執行時程", "里程碑、工作項目與負責角色"],
-    ["05", "預算規劃", "建置、人力、維運與 AI 成本"],
-    ["06", "預期效益", "效率提升、品質控管與管理報表"]
+function updateBudgetSummary() {
+  const total = Number($("#budgetTotal").value || 0);
+  const grant = Number($("#budgetGrant").value || 0);
+  const selfFunding = Number($("#budgetSelf").value || 0);
+  const itemTotal = [...$("#budgetItems").querySelectorAll("input")].reduce((sum, input) => sum + Number(input.value || 0), 0);
+  const isValid = itemTotal <= total && grant + selfFunding === total;
+
+  $("#budgetStatus").textContent = isValid ? "符合上限" : "需調整";
+  $("#budgetStatus").className = isValid ? "status done" : "status review";
+  $("#budgetSummary").textContent = `目前科目合計 ${formatMoney(itemTotal)}，總經費上限 ${formatMoney(total)}，補助與自籌合計 ${formatMoney(grant + selfFunding)}。`;
+}
+
+function renderSustainability() {
+  const settings = state.sustainabilitySettings[0];
+  const selectedSdgs = settings?.sdg_goals || ["SDG4", "SDG8", "SDG11", "SDG17"];
+  const selectedEsg = settings?.esg_dimensions || ["S", "G"];
+  const sdgLabels = [
+    "SDG1", "SDG2", "SDG3", "SDG4", "SDG5", "SDG6", "SDG7", "SDG8", "SDG9",
+    "SDG10", "SDG11", "SDG12", "SDG13", "SDG14", "SDG15", "SDG16", "SDG17"
   ];
 
-  $("#slidesGrid").innerHTML = slides.map(([number, title, text]) => `
-    <article class="slide-card"><span>${number}</span><strong>${title}</strong><p class="meta">${text}</p></article>
-  `).join("");
-}
+  $("#sdgGoals").innerHTML = sdgLabels
+    .map((label) => `<label><input type="checkbox" class="sdgOption" value="${label}" ${selectedSdgs.includes(label) ? "checked" : ""} /> ${label}</label>`)
+    .join("");
 
-function renderVouchers() {
-  const currentProject = closeoutProject.value;
-  const projectVouchers = state.vouchers.filter((item) => item.project === currentProject);
-
-  if (!projectVouchers.length) {
-    voucherList.innerHTML = `<article class="voucher-row"><div><strong>此案件尚未匯入憑證</strong><div class="meta">請先選擇案件與憑證類型，再新增憑證。</div></div></article>`;
-    return;
-  }
-
-  voucherList.innerHTML = projectVouchers.map((item) => `
-    <article class="voucher-row">
-      <div>
-        <strong>${item.name}</strong>
-        <div class="meta">${item.project} · ${item.type} · ${item.amount}</div>
-      </div>
-      <span class="status ${item.status === "已分類" ? "done" : "review"}">${item.status}</span>
-    </article>
-  `).join("");
-}
-
-function renderPhotos() {
-  const currentProject = closeoutProject.value;
-  const projectPhotos = state.photos.filter((item) => item.project === currentProject);
-
-  if (!projectPhotos.length) {
-    photoList.innerHTML = `<article class="photo-row"><div class="photo-thumb">PHOTO</div><div><strong>此案件尚未匯入照片</strong><div class="meta">請先選擇案件與照片階段，再新增照片。</div></div></article>`;
-    return;
-  }
-
-  photoList.innerHTML = projectPhotos.map((item, index) => `
-    <article class="photo-row">
-      <div class="photo-thumb">照片 ${index + 1}</div>
-      <div>
-        <strong>${item.name}</strong>
-        <div class="meta">${item.project} · ${item.stage} · ${item.note}</div>
-      </div>
-      <span class="status done">已歸檔</span>
-    </article>
-  `).join("");
-}
-
-function updateCloseoutReadyState() {
-  const currentCount = state.vouchers.filter((item) => item.project === closeoutProject.value).length;
-  const photoCount = state.photos.filter((item) => item.project === closeoutProject.value).length;
-  const ready = currentCount >= 3 && photoCount >= 2;
-  closeoutStatus.textContent = ready ? "可生成報告" : "附件整理中";
-  closeoutStatus.className = ready ? "status done" : "status review";
-}
-
-function updateCloseoutTemplateMatch() {
-  const template = closeoutTemplateMap[closeoutProject.value];
-  matchedTemplate.textContent = template.name;
-  matchedTemplateDesc.textContent = `必要附件：${template.required}。系統會依此範本安排章節、附件清單與編排格式。`;
-  voucherProject.value = closeoutProject.value;
-  photoProject.value = closeoutProject.value;
-  renderVouchers();
-  renderPhotos();
-  updateCloseoutReadyState();
-}
-
-function updateProposalReference() {
-  const plan = proposalTemplateMap[planSelect.value];
-  const year = referenceYear.value;
-  const points = plan.references[year];
-  planTemplateName.textContent = plan.templateName;
-  planTemplatePath.textContent = plan.path;
-  planTemplateRule.textContent = `制式章節：${plan.sections}。`;
-  referenceTitle.textContent = `${year} ${planSelect.value}`;
-  referencePoints.innerHTML = points.map((point) => `<li>${point}</li>`).join("");
-  loadBudgetSettings();
-  loadSustainabilitySettings();
-}
-
-function renderSdgOptions(selected = []) {
-  sdgGoals.innerHTML = sdgLabels.map((label) => `
-    <label><input type="checkbox" class="sdgOption" value="${label}" ${selected.includes(label) ? "checked" : ""} /> ${label}</label>
-  `).join("");
-}
-
-function loadSustainabilitySettings() {
-  const config = sustainabilitySettings[planSelect.value];
-  renderSdgOptions(config.sdgs);
   document.querySelectorAll(".esgOption").forEach((input) => {
-    input.checked = config.esg.includes(input.value);
+    input.checked = selectedEsg.includes(input.value[0]) || selectedEsg.includes(input.value);
+    input.addEventListener("change", updateSustainabilityStatus);
   });
-  sustainabilityImpact.value = config.impact;
-  sustainabilityKpi.value = config.kpi;
+
+  $("#sustainabilityImpact").value =
+    settings?.impact_summary || "本計畫聚焦文化教育推廣、地方參與、青年培力與跨單位合作，具備社會面與治理面的永續效益。";
+  $("#sustainabilityKpi").value =
+    settings?.kpi_items || "參與人次、活動場次、合作單位數、成果曝光次數、滿意度調查";
+
+  $("#sdgGoals").addEventListener("change", updateSustainabilityStatus);
+  $("#enableSustainability").addEventListener("change", updateSustainabilityStatus);
   updateSustainabilityStatus();
 }
 
 function getSustainabilitySettings() {
   return {
-    enabled: enableSustainability.checked,
+    enabled: $("#enableSustainability").checked,
     sdgs: [...document.querySelectorAll(".sdgOption:checked")].map((input) => input.value),
     esg: [...document.querySelectorAll(".esgOption:checked")].map((input) => input.value),
-    impact: sustainabilityImpact.value.trim(),
-    kpi: sustainabilityKpi.value.trim()
+    impact: $("#sustainabilityImpact").value.trim(),
+    kpi: $("#sustainabilityKpi").value.trim()
   };
 }
 
 function updateSustainabilityStatus() {
-  const config = getSustainabilitySettings();
-  const ready = config.enabled && config.sdgs.length > 0 && config.esg.length > 0;
-  sustainabilityStatus.textContent = ready ? "已啟用" : "未完整";
-  sustainabilityStatus.className = ready ? "status done" : "status review";
+  const settings = getSustainabilitySettings();
+  const ready = settings.enabled && settings.sdgs.length && settings.esg.length;
+  $("#sustainabilityStatus").textContent = ready ? "已啟用" : "未完整";
+  $("#sustainabilityStatus").className = ready ? "status done" : "status review";
 }
 
-function formatMoney(value) {
-  return `NT$ ${Number(value).toLocaleString("zh-TW")}`;
+function getDaysUntil(dateValue) {
+  if (!dateValue) return null;
+  const endDate = new Date(`${dateValue}T00:00:00`);
+  if (Number.isNaN(endDate.getTime())) return null;
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.ceil((endDate - todayStart) / 86400000);
 }
 
-function getCurrentBudgetFromFields() {
-  return {
-    total: Number(budgetTotal.value || 0),
-    grant: Number(budgetGrant.value || 0),
-    self: Number(budgetSelf.value || 0),
-    items: [...budgetItems.querySelectorAll("input")].map((input) => ({
-      name: input.dataset.name,
-      limit: Number(input.value || 0)
-    }))
-  };
+function getCloseoutReminders() {
+  const threshold = Number($("#reminderLeadDays")?.value || 30);
+  const projects = state.projects.length ? state.projects : demoProjects;
+  return projects
+    .map((project) => {
+      const days = getDaysUntil(project.end_date);
+      let level = "normal";
+      let label = "尚未進入提醒期";
+      if (days === null) {
+        level = "missing";
+        label = "未設定結束日";
+      } else if (days < 0) {
+        level = "overdue";
+        label = `已逾期 ${Math.abs(days)} 天`;
+      } else if (days <= threshold) {
+        level = "urgent";
+        label = `剩 ${days} 天`;
+      }
+      return { project, days, level, label };
+    })
+    .sort((a, b) => {
+      if (a.days === null) return 1;
+      if (b.days === null) return -1;
+      return a.days - b.days;
+    });
 }
 
-function updateBudgetSummary() {
-  const budget = getCurrentBudgetFromFields();
-  const itemTotal = budget.items.reduce((sum, item) => sum + item.limit, 0);
-  const sourceTotal = budget.grant + budget.self;
-  const isValid = itemTotal <= budget.total && sourceTotal === budget.total;
-  budgetStatus.textContent = isValid ? "符合上限" : "需調整";
-  budgetStatus.className = isValid ? "status done" : "status review";
-  budgetSummary.textContent = `目前科目合計 ${formatMoney(itemTotal)}，總經費上限 ${formatMoney(budget.total)}；補助款與自籌款合計 ${formatMoney(sourceTotal)}。`;
+function renderCloseoutReminders() {
+  const list = $("#closeoutReminderList");
+  const summary = $("#reminderSummary");
+  if (!list || !summary) return;
+
+  const reminders = getCloseoutReminders();
+  const active = reminders.filter((item) => ["urgent", "overdue", "missing"].includes(item.level));
+
+  summary.textContent = active.length ? `${active.length} 件需注意` : "目前正常";
+  summary.className = active.length ? "status review" : "status done";
+
+  list.innerHTML = reminders
+    .map((item) => {
+      const project = item.project;
+      const cssClass = item.level === "overdue" ? "overdue" : item.level === "urgent" ? "urgent" : "ready";
+      const endDate = project.end_date ? formatDate(project.end_date) : "尚未設定";
+      const actionText =
+        item.level === "overdue"
+          ? "請立即補齊憑證、照片與結案報告草稿。"
+          : item.level === "urgent"
+            ? "建議開始確認憑證、照片、經費核銷與成果摘要。"
+            : item.level === "missing"
+              ? "請先回專案資料補上結案日期。"
+              : "尚未進入提醒期，可持續整理執行資料。";
+      return `
+        <article class="reminder-item ${cssClass}">
+          <strong>${project.name || "未命名專案"}</strong>
+          <span class="status ${item.level === "overdue" || item.level === "urgent" ? "review" : "done"}">${item.label}</span>
+          <small>結案日期：${endDate}<br />${actionText}</small>
+        </article>`;
+    })
+    .join("");
 }
 
-function loadBudgetSettings() {
-  const budget = budgetSettings[planSelect.value];
-  budgetTotal.value = budget.total;
-  budgetGrant.value = budget.grant;
-  budgetSelf.value = budget.self;
-  budgetItems.innerHTML = budget.items.map((item) => `
-    <label>${item.name}<input type="number" value="${item.limit}" data-name="${item.name}" /></label>
-  `).join("");
-  budgetItems.querySelectorAll("input").forEach((input) => {
-    input.addEventListener("input", updateBudgetSummary);
+function renderCloseout() {
+  const report = state.closeoutReports[0];
+  const project = projectById(report?.project_id) || state.projects[0] || demoProjects[0];
+  $("#matchedTemplate").textContent = "文化補助結案報告範本";
+  $("#matchedTemplateDesc").textContent = "系統會依案件所屬部會與案件類型自動套用章節、附件與格式規則。";
+  $("#closeoutReport").value =
+    report?.content ||
+    `一、計畫摘要\n${project.name} 以文化推廣、地方參與及藝文教育為核心，透過系列活動與社區合作提升民眾參與。\n\n二、照片紀錄\n後續將依 photos 表中的照片自動整理。\n\n三、經費核銷\n後續將依 vouchers 表中的憑證自動整理。\n\n四、SDGs / ESG 成果\n本案將對應永續目標並整理社會面與治理面效益。`;
+}
+
+function renderVouchers() {
+  const target = $("#voucherList");
+  const vouchers = state.vouchers.length
+    ? state.vouchers
+    : [
+        { file_name: "invoice-001.pdf", voucher_type: "發票", amount: 32000, status: "pending" },
+        { file_name: "receipt-001.pdf", voucher_type: "收據", amount: 18500, status: "pending" }
+      ];
+
+  target.innerHTML = vouchers
+    .map(
+      (item) => `
+        <article class="voucher-row">
+          <div>
+            <strong>${item.file_name || item.invoice_number || "未命名憑證"}</strong>
+            <div class="meta">${item.voucher_type || "憑證"} ｜ ${formatMoney(item.amount)} ｜ ${statusLabel(item.status)}</div>
+          </div>
+          <span class="status ${statusClass(item.status)}">${statusLabel(item.status)}</span>
+        </article>`
+    )
+    .join("");
+}
+
+function renderPhotos() {
+  const target = $("#photoList");
+  const photos = state.photos.length
+    ? state.photos
+    : [
+        { caption: "活動現場紀錄", stage: "執行中", location: "台北", status: "active" },
+        { caption: "成果分享會", stage: "成果完成", location: "台北", status: "active" }
+      ];
+
+  target.innerHTML = photos
+    .map(
+      (item, index) => `
+        <article class="photo-row">
+          <div class="photo-thumb">照片 ${index + 1}</div>
+          <div>
+            <strong>${item.caption || "照片紀錄"}</strong>
+            <div class="meta">${item.stage || "活動紀錄"} ｜ ${item.location || "未填地點"} ｜ ${statusLabel(item.status)}</div>
+          </div>
+          <span class="status done">已歸檔</span>
+        </article>`
+    )
+    .join("");
+}
+
+function renderExports() {
+  $("#exportList").innerHTML = state.exports
+    .map(
+      (item) => `
+        <article class="export-row">
+          <div><strong>${item.name}</strong><div class="meta">${item.type} ｜ ${item.time}</div></div>
+          <button class="secondary-btn" data-action="download">下載</button>
+        </article>`
+    )
+    .join("");
+}
+
+function renderSlides() {
+  const slides = [
+    ["01", "計畫背景", "說明補助案目的、地方需求與核心問題。"],
+    ["02", "執行策略", "整理活動設計、社區合作與推廣方法。"],
+    ["03", "經費配置", "呈現總經費、補助款、自籌款與主要科目。"],
+    ["04", "SDGs / ESG", "說明永續目標與社會影響。"],
+    ["05", "預期效益", "整理參與人次、合作單位與成果曝光。"],
+    ["06", "後續展望", "提出延續機制與成果擴散方式。"]
+  ];
+
+  $("#slidesGrid").innerHTML = slides
+    .map(([number, title, text]) => `<article class="slide-card"><span>${number}</span><strong>${title}</strong><p class="meta">${text}</p></article>`)
+    .join("");
+}
+
+function renderPermissions() {
+  const list = $("#permissionList");
+  if (!list) return;
+
+  list.innerHTML = `
+    <div class="permission-row header">
+      <div>功能</div><div>客戶讀取</div><div>客戶編輯</div><div>客戶審核</div><div>管理者讀取</div><div>管理者編輯</div><div>管理者審核</div>
+    </div>
+    ${Object.entries(state.permissions)
+      .map(
+        ([key, item]) => `
+          <article class="permission-row">
+            <div><strong>${item.label}</strong><small>${item.note}</small></div>
+            ${["customer", "admin"]
+              .flatMap((role) =>
+                ["read", "edit", "approve"].map(
+                  (action) => `
+                    <label class="permission-check">
+                      <input type="checkbox" data-module="${key}" data-role="${role}" data-action="${action}" ${item[role][action] ? "checked" : ""} />
+                    </label>`
+                )
+              )
+              .join("")}
+          </article>`
+      )
+      .join("")}`;
+
+  list.querySelectorAll("input").forEach((input) => {
+    input.addEventListener("change", () => {
+      state.permissions[input.dataset.module][input.dataset.role][input.dataset.action] = input.checked;
+      applyPermissions();
+    });
   });
-  updateBudgetSummary();
 }
 
-function switchView(viewId) {
-  if (viewId === "admin" && state.role !== "admin") {
-    showToast("此頁面需要管理者權限");
-    viewId = "overview";
-  }
-  document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
-  $(`#${viewId}`).classList.add("active");
-  document.querySelectorAll(".nav-link").forEach((link) => {
-    link.classList.toggle("active", link.dataset.view === viewId);
+function renderReviewList() {
+  const reviewList = $("#reviewList");
+  if (!reviewList) return;
+
+  const docs = state.documents.length ? state.documents : demoDocuments;
+  reviewList.innerHTML = docs
+    .map(
+      (doc) => `
+        <article class="review-row">
+          <div>
+            <strong>${doc.title}</strong>
+            <div class="meta">${projectById(doc.project_id).name || "測試專案"} ｜ ${statusLabel(doc.status)}</div>
+          </div>
+          <label>
+            審核狀態
+            <select class="review-status" data-id="${doc.id}">
+              <option value="draft" ${doc.status === "draft" ? "selected" : ""}>草稿</option>
+              <option value="reviewing" ${doc.status === "reviewing" ? "selected" : ""}>審核中</option>
+              <option value="returned" ${doc.status === "returned" ? "selected" : ""}>退回修改</option>
+              <option value="completed" ${doc.status === "completed" ? "selected" : ""}>已完成</option>
+              <option value="archived" ${doc.status === "archived" ? "selected" : ""}>封存</option>
+            </select>
+          </label>
+        </article>`
+    )
+    .join("");
+
+  reviewList.querySelectorAll(".review-status").forEach((select) => {
+    select.addEventListener("change", async () => {
+      const doc = state.documents.find((item) => item.id === select.dataset.id);
+      if (!doc) return;
+      doc.status = select.value;
+      await supabaseClient.from("proposal_documents").update({ status: select.value }).eq("id", doc.id);
+      renderDocuments("recentDocs", 3);
+      renderDocuments("docLibrary", undefined, true);
+      showToast("文件狀態已更新");
+    });
   });
 }
 
 function applyPermissions() {
   const isAdmin = state.role === "admin";
-  const currentRole = isAdmin ? "admin" : "customer";
+  $("#roleLabel").textContent = isAdmin ? "管理者模式" : "客戶模式";
   document.querySelectorAll(".admin-only").forEach((item) => {
     item.style.display = isAdmin ? "block" : "none";
   });
 
-  const budgetEditable = state.permissions.budget[currentRole].edit;
-  const sustainabilityEditable = state.permissions.sustainability[currentRole].edit;
-  const reviewEditable = state.permissions.review[currentRole].edit || state.permissions.review[currentRole].approve;
-  const templateEditable = state.permissions.templates[currentRole].edit;
+  document.querySelectorAll(".review-status").forEach((select) => {
+    select.disabled = !isAdmin;
+  });
 
-  document.querySelectorAll(".admin-managed").forEach((section) => {
-    const isBudget = section.classList.contains("budget-card");
-    const isSustainability = section.classList.contains("sustainability-card");
-    const editable = (isBudget && budgetEditable) || (isSustainability && sustainabilityEditable);
-    section.classList.toggle("is-readonly", !editable);
-    if (!section.querySelector(".readonly-note")) {
-      const note = document.createElement("div");
-      note.className = "readonly-note";
-      note.textContent = "此區目前依權限設定為唯讀。";
-      section.prepend(note);
-    }
-    section.querySelectorAll("input, select, textarea, button").forEach((control) => {
-      const allowedForCustomer = ["generatePlanBtn", "rewriteBtn"].includes(control.id);
-      control.disabled = !editable && !allowedForCustomer;
+  ["#saveTemplateBtn", "#saveSustainabilityBtn", "#savePermissionBtn"].forEach((selector) => {
+    const button = $(selector);
+    if (button) button.disabled = !isAdmin;
+  });
+}
+
+function switchView(viewId) {
+  if (viewId === "admin" && state.role !== "admin") {
+    showToast("此區域需要管理者權限");
+    viewId = "overview";
+  }
+
+  document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
+  $(`#${viewId}`)?.classList.add("active");
+  document.querySelectorAll(".nav-link").forEach((link) => {
+    link.classList.toggle("active", link.dataset.view === viewId);
+  });
+}
+
+async function loadSupabaseData() {
+  const [projectsRes, docsRes, reportsRes, budgetRes, sustainabilityRes, vouchersRes, photosRes] = await Promise.all([
+    supabaseClient.from("projects").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("proposal_documents").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("closeout_reports").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("budget_settings").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("sustainability_settings").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("vouchers").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("photos").select("*").order("created_at", { ascending: false })
+  ]);
+
+  if (projectsRes.error) throw projectsRes.error;
+
+  state.projects = projectsRes.data?.length ? projectsRes.data : demoProjects;
+  state.documents = docsRes.data?.length ? docsRes.data : demoDocuments;
+  state.closeoutReports = reportsRes.data || [];
+  state.budgetSettings = budgetRes.data || [];
+  state.sustainabilitySettings = sustainabilityRes.data || [];
+  state.vouchers = vouchersRes.data || [];
+  state.photos = photosRes.data || [];
+
+  if (state.budgetSettings[0]) {
+    const { data } = await supabaseClient
+      .from("budget_items")
+      .select("*")
+      .eq("budget_setting_id", state.budgetSettings[0].id)
+      .order("sort_order", { ascending: true });
+    state.budgetItems = data || [];
+  }
+}
+
+async function loadProfile() {
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("*")
+    .eq("id", state.session.user.id)
+    .single();
+
+  if (error) throw error;
+  state.profile = data;
+  state.role = data.role || "customer";
+}
+
+function renderAll() {
+  renderProjectOptions();
+  renderDocuments("recentDocs", 3);
+  renderDocuments("docLibrary", undefined, true);
+  renderBudgets();
+  renderSustainability();
+  renderCloseout();
+  renderCloseoutReminders();
+  renderVouchers();
+  renderPhotos();
+  renderExports();
+  renderSlides();
+  renderPermissions();
+  renderReviewList();
+  applyPermissions();
+}
+
+async function enterDashboard(session) {
+  state.session = session;
+  await loadProfile();
+  await loadSupabaseData();
+  $("#loginView").classList.add("hidden");
+  $("#dashboardView").classList.remove("hidden");
+  renderAll();
+  switchView("overview");
+  showToast("登入成功，已載入 Supabase 資料");
+}
+
+function bindEvents() {
+  document.querySelectorAll(".role-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.role = button.dataset.role;
+      document.querySelectorAll(".role-btn").forEach((item) => item.classList.remove("active"));
+      button.classList.add("active");
+      $("#email").value = state.role === "admin" ? "admin@example.com" : "client@example.com";
     });
   });
 
-  document.querySelectorAll(".review-status").forEach((select) => {
-    select.disabled = !reviewEditable;
+  $("#loginForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const email = $("#email").value.trim();
+    const password = $("#password").value;
+
+    if (!password) {
+      showToast("請輸入 Supabase Authentication 的帳號密碼");
+      return;
+    }
+
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) {
+      showToast(`登入失敗：${error.message}`);
+      return;
+    }
+
+    try {
+      await enterDashboard(data.session);
+    } catch (loadError) {
+      showToast(`資料載入失敗：${loadError.message}`);
+    }
   });
 
-  ["#saveTemplateBtn", "#saveSustainabilityBtn"].forEach((selector) => {
-    const button = $(selector);
-    if (button) button.disabled = !templateEditable;
+  $("#logoutBtn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    state.session = null;
+    $("#dashboardView").classList.add("hidden");
+    $("#loginView").classList.remove("hidden");
+    showToast("已登出");
   });
-}
 
-function applyCrossFilter() {
-  state.filters.company = companyFilter.value;
-  state.filters.agency = agencyFilter.value;
-  renderDocuments("docLibrary", undefined, true);
-  switchView("documents");
-  showToast("已依公司與公家部會交叉比對");
-}
-
-function applyLibraryFilters() {
-  state.filters.search = docSearch.value;
-  state.filters.status = docStatusFilter.value;
-  state.filters.category = docCategoryFilter.value;
-  renderDocuments("docLibrary", undefined, true);
-}
-
-document.querySelectorAll(".role-btn").forEach((button) => {
-  button.addEventListener("click", () => {
-    state.role = button.dataset.role;
-    document.querySelectorAll(".role-btn").forEach((item) => item.classList.remove("active"));
-    button.classList.add("active");
-    $("#email").value = state.role === "admin" ? "admin@example.com" : "client@example.com";
+  document.querySelectorAll(".nav-link").forEach((button) => {
+    button.addEventListener("click", () => switchView(button.dataset.view));
   });
-});
 
-loginForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  loginView.classList.add("hidden");
-  dashboardView.classList.remove("hidden");
-  roleLabel.textContent = state.role === "admin" ? "管理者模式" : "客戶模式";
-  applyPermissions();
-  switchView("overview");
-  showToast("登入成功");
-});
-
-$("#logoutBtn").addEventListener("click", () => {
-  dashboardView.classList.add("hidden");
-  loginView.classList.remove("hidden");
-  showToast("已登出");
-});
-
-document.querySelectorAll(".nav-link").forEach((button) => {
-  button.addEventListener("click", () => switchView(button.dataset.view));
-});
-
-$("#compareBtn").addEventListener("click", applyCrossFilter);
-$("#clearCompareBtn").addEventListener("click", () => {
-  companyFilter.value = "";
-  agencyFilter.value = "";
-  state.filters.company = "";
-  state.filters.agency = "";
-  renderDocuments("docLibrary", undefined, true);
-  showToast("已清除交叉比對條件");
-});
-
-docSearch.addEventListener("input", () => {
-  if (docSearch.value.trim() && docStatusFilter.value === "active") {
-    docStatusFilter.value = "";
-  }
-  applyLibraryFilters();
-});
-docStatusFilter.addEventListener("change", applyLibraryFilters);
-docCategoryFilter.addEventListener("change", applyLibraryFilters);
-
-$("#addVoucherBtn").addEventListener("click", () => {
-  state.voucherCount += 1;
-  const selectedProject = voucherProject.value;
-  const selectedType = voucherType.value;
-  state.vouchers.push({
-    project: selectedProject,
-    name: `${selectedType}_${state.voucherCount}.pdf`,
-    type: selectedType,
-    amount: "NT$ 12,800",
-    status: "已分類"
+  $("#compareBtn").addEventListener("click", () => {
+    switchView("documents");
+    showToast("已套用交叉比對搜尋");
   });
-  closeoutProject.value = selectedProject;
-  updateCloseoutTemplateMatch();
-  showToast("已依案件歸屬新增憑證");
-});
 
-$("#addPhotoBtn").addEventListener("click", () => {
-  const selectedProject = photoProject.value;
-  const selectedStage = photoStage.value;
-  const photoNumber = state.photos.filter((item) => item.project === selectedProject).length + 1;
-  state.photos.push({
-    project: selectedProject,
-    name: `${selectedStage}_成果照片_${photoNumber}.jpg`,
-    stage: selectedStage,
-    note: "原型示範照片，正式系統可填寫拍攝日期、地點與說明"
+  $("#clearCompareBtn").addEventListener("click", () => {
+    $("#companyFilter").value = "";
+    $("#agencyFilter").value = "";
+    showToast("已清除交叉比對條件");
   });
-  closeoutProject.value = selectedProject;
-  updateCloseoutTemplateMatch();
-  showToast("已依案件歸屬新增成果照片");
-});
 
-$("#generateCloseoutBtn").addEventListener("click", () => {
-  const template = closeoutTemplateMap[closeoutProject.value];
-  const sustainability = getSustainabilitySettings();
-  const photoLines = state.photos
-    .filter((item) => item.project === closeoutProject.value)
-    .map((item, index) => `${index + 1}. ${item.name}｜${item.stage}｜${item.note}`)
-    .join("\n") || "尚未上傳照片紀錄。";
-  closeoutReport.value = closeoutDraft
-    .replace("經濟部｜市場拓展計畫書", closeoutProject.value)
-    .replace("一、案件基本資料", `套用範本：${template.name}\n必要附件：${template.required}、成果照片\n\n一、案件基本資料`)
-    .replace("系統已彙整本案成果照片，包含執行中、活動紀錄與成果完成等階段，可作為結案報告附件與成果佐證。", `系統已彙整本案成果照片，包含執行中、活動紀錄與成果完成等階段，可作為結案報告附件與成果佐證。\n\n照片清單：\n${photoLines}`)
-    .replace("五、效益說明", `五、SDGs / ESG 成果回報\n對應 SDGs：${sustainability.sdgs.join("、") || "未設定"}\nESG 面向：${sustainability.esg.join("、") || "未設定"}\n成果摘要：${sustainability.impact || "未設定"}\n成果指標：${sustainability.kpi || "未設定"}\n\n六、效益說明`)
-    .replace("六、附件清單", "七、附件清單");
-  updateCloseoutReadyState();
-  showToast("AI 已依對應範本生成結案報告書草稿");
-});
+  $("#docSearch").addEventListener("input", (event) => {
+    state.filters.search = event.target.value;
+    if (state.filters.search && $("#docStatusFilter").value === "active") {
+      $("#docStatusFilter").value = "";
+      state.filters.status = "";
+    }
+    renderDocuments("docLibrary", undefined, true);
+  });
 
-$("#exportCloseoutBtn").addEventListener("click", () => {
-  state.exports.unshift({ name: `${closeoutProject.value.replace("｜", "_")}_結案報告書.docx`, type: "DOCX", time: "剛剛" });
-  renderExports();
-  switchView("exports");
-  showToast("已建立結案報告匯出任務");
-});
+  $("#docStatusFilter").addEventListener("change", (event) => {
+    state.filters.status = event.target.value;
+    renderDocuments("docLibrary", undefined, true);
+  });
 
-closeoutProject.addEventListener("change", updateCloseoutTemplateMatch);
-$("[data-view-target='admin']").addEventListener("click", () => switchView("admin"));
-$("#saveTemplateBtn").addEventListener("click", () => showToast("範本對應設定已儲存"));
-$("#savePermissionBtn").addEventListener("click", () => {
-  applyPermissions();
-  showToast("權限設定已套用");
-});
-planSelect.addEventListener("change", updateProposalReference);
-referenceYear.addEventListener("change", updateProposalReference);
-[budgetTotal, budgetGrant, budgetSelf].forEach((input) => {
-  input.addEventListener("input", updateBudgetSummary);
-});
-enableSustainability.addEventListener("change", updateSustainabilityStatus);
-document.querySelectorAll(".esgOption").forEach((input) => input.addEventListener("change", updateSustainabilityStatus));
-sustainabilityImpact.addEventListener("input", updateSustainabilityStatus);
-sustainabilityKpi.addEventListener("input", updateSustainabilityStatus);
-sdgGoals.addEventListener("change", updateSustainabilityStatus);
-$("#saveSustainabilityBtn").addEventListener("click", () => showToast("SDGs / ESG 分析規則已儲存"));
+  $("#docCategoryFilter").addEventListener("change", (event) => {
+    state.filters.category = event.target.value;
+    renderDocuments("docLibrary", undefined, true);
+  });
 
-document.body.addEventListener("click", (event) => {
-  const action = event.target.dataset.action;
-  if (!action) return;
-  if (action === "upload") showToast("已建立上傳任務，可接續串接檔案上傳 API");
-  if (action === "analyze") showToast("AI 分析已完成：已產生摘要、缺漏章節與改善建議");
-  if (action === "download") showToast("範例下載任務已觸發");
-});
+  ["#budgetTotal", "#budgetGrant", "#budgetSelf"].forEach((selector) => {
+    $(selector).addEventListener("input", updateBudgetSummary);
+  });
 
-$("#generatePlanBtn").addEventListener("click", () => {
-  const plan = proposalTemplateMap[planSelect.value];
-  const budget = getCurrentBudgetFromFields();
-  const sustainability = getSustainabilitySettings();
-  const year = referenceYear.value;
-  const newYear = targetYear.value;
-  const template = $("#templateSelect").value;
-  const prompt = $("#promptInput").value.trim();
-  const points = plan.references[year].map((point) => `- ${point}`).join("\n");
-  const budgetRows = budget.items.map((item) => `| ${item.name} | ${formatMoney(item.limit)} | 依本案執行需求編列，AI 生成時不得超過此上限。 |`).join("\n");
+  $("#reminderLeadDays")?.addEventListener("change", renderCloseoutReminders);
 
-  draftOutput.value = `計畫名稱：${newYear} ${planSelect.value}
+  $("#generatePlanBtn").addEventListener("click", () => {
+    const project = state.projects.find((item) => item.id === $("#planSelect").value) || state.projects[0] || demoProjects[0];
+    const budgetTotal = $("#budgetTotal").value;
+    const sustainability = getSustainabilitySettings();
+    $("#draftOutput").value = `計畫名稱：${project.name}
 
-一、前年度延續脈絡
-本企劃書參照 ${year} 年度同計畫內容，並依 ${newYear} 年度目標進行延伸。前年度可延續重點如下：
-${points}
+一、計畫緣起
+本計畫延續既有年度執行成果，聚焦地方文化推廣、社區參與與藝文教育普及，並以可量化成果作為申請與審查基礎。
 
-二、套用範本
-範本名稱：${plan.templateName}
-範本位置：${plan.path}
-制式章節：${plan.sections}
+二、計畫目標
+1. 辦理系列文化推廣活動。
+2. 建立地方社群與藝文團隊合作機制。
+3. 提升青年與居民參與文化活動的機會。
+4. 將 SDGs 與 ESG 分析納入計畫效益。
 
-三、本案經費設定
-總經費上限：${formatMoney(budget.total)}
-補助款上限：${formatMoney(budget.grant)}
-自籌款：${formatMoney(budget.self)}
-
-經費概算表：
-| 經費科目 | 編列上限 | 用途說明 |
-|---|---:|---|
-${budgetRows}
+三、經費概算
+本案總經費上限為 ${formatMoney(budgetTotal)}，AI 撰寫時將依據系統中的經費設定與細項上限編列。
 
 四、SDGs / ESG 分析
-${sustainability.enabled ? `對應 SDGs：${sustainability.sdgs.join("、") || "未設定"}
-ESG 面向：${sustainability.esg.join("、") || "未設定"}
-永續影響摘要：${sustainability.impact || "未設定"}
-量化指標 / KPI：${sustainability.kpi || "未設定"}` : "本案未啟用 SDGs / ESG 分析。"}
+對應目標：${sustainability.sdgs.join("、")}
+ESG 面向：${sustainability.esg.join("、")}
+分析摘要：${sustainability.impact}
 
-${baseDraft}
+五、預期效益
+預計建立可延續的地方文化參與模式，並形成可供結案報告與簡報使用的成果資料。`;
+    showToast("已依 Supabase 專案資料產生企劃書草稿");
+  });
 
-五、AI 生成設定
-模板：${template}
-需求：${prompt}
+  $("#rewriteBtn").addEventListener("click", () => showToast("已模擬改寫段落，正式版會串接 AI API"));
+  $("#saveDraftBtn").addEventListener("click", () => showToast("草稿儲存功能下一步會寫回 proposal_documents"));
+  $("#buildSlidesBtn").addEventListener("click", () => {
+    renderSlides();
+    showToast("已產生簡報大綱");
+  });
+  $("#exportBtn").addEventListener("click", () => {
+    state.exports.unshift({ name: "文化推廣補助計畫_匯出檔.zip", type: "ZIP", time: "剛剛" });
+    renderExports();
+    showToast("已建立匯出任務");
+  });
+  $("#addVoucherBtn").addEventListener("click", () => showToast("正式版會開啟檔案選擇並上傳到 vouchers bucket"));
+  $("#addPhotoBtn").addEventListener("click", () => showToast("正式版會開啟照片選擇並上傳到 photos bucket"));
+  $("#generateCloseoutBtn").addEventListener("click", () => {
+    renderCloseout();
+    showToast("已依現有資料產生結案報告草稿");
+  });
+  $("#exportCloseoutBtn").addEventListener("click", () => {
+    state.exports.unshift({ name: "文化推廣補助計畫結案報告.docx", type: "DOCX", time: "剛剛" });
+    renderExports();
+    switchView("exports");
+    showToast("已建立結案報告匯出任務");
+  });
+  $("#savePermissionBtn").addEventListener("click", () => showToast("權限設定已套用於畫面，正式版會寫回 permissions 表"));
+  $("#saveTemplateBtn").addEventListener("click", () => showToast("範本設定正式版會寫回 templates 表"));
+  $("#saveSustainabilityBtn").addEventListener("click", () => showToast("SDGs / ESG 規則正式版會寫回 sustainability_settings 表"));
 
-六、AI 補強摘要
-本版本已依前年度計畫脈絡延伸，保留上下年度呼應，並套用該計畫的制式範本章節，後續可接續匯出為 Word 或轉換成簡報。`;
-  showToast("已依年度參照與範本生成新版企劃書草稿");
-});
+  document.body.addEventListener("click", (event) => {
+    const action = event.target.dataset.action;
+    if (action === "upload") showToast("正式版會依公司ID/專案ID上傳檔案到 Storage");
+    if (action === "analyze") showToast("AI 分析下一步會串接後端 API");
+    if (action === "download") showToast("正式版會下載 Storage 中的匯出檔");
+    if (event.target.dataset.viewTarget === "admin") switchView("admin");
+  });
+}
 
-$("#rewriteBtn").addEventListener("click", () => {
-  draftOutput.value = draftOutput.value.replace(
-    "本計畫延續既有執行成果",
-    "本計畫承接前一年度執行成果與審查建議"
-  );
-  showToast("已套用正式語氣改寫");
-});
+async function init() {
+  bindEvents();
+  state.projects = demoProjects;
+  state.documents = demoDocuments;
+  renderAll();
 
-$("#saveDraftBtn").addEventListener("click", () => showToast("已儲存為新版本 v1.1"));
-$("#buildSlidesBtn").addEventListener("click", () => {
-  renderSlides();
-  showToast("已生成 6 頁簡報大綱");
-});
-$("#exportBtn").addEventListener("click", () => {
-  state.exports.unshift({ name: "智慧計畫書管理平台_完整匯出.zip", type: "ZIP", time: "剛剛" });
-  renderExports();
-  showToast("已建立匯出任務");
-});
+  const { data } = await supabaseClient.auth.getSession();
+  if (data.session) {
+    try {
+      await enterDashboard(data.session);
+    } catch {
+      await supabaseClient.auth.signOut();
+    }
+  }
+}
 
-draftOutput.value = baseDraft;
-closeoutReport.value = "請先整理憑證，或點選「AI 生成結案報告書」產生草稿。";
-renderDocuments("recentDocs", 3);
-renderDocuments("docLibrary", undefined, true);
-renderPermissionList();
-renderReviewList();
-renderExports();
-renderSlides();
-renderVouchers();
-renderPhotos();
-updateCloseoutReadyState();
-updateCloseoutTemplateMatch();
-updateProposalReference();
-updateBudgetSummary();
-loadSustainabilitySettings();
+init();
