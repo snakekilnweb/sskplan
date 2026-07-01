@@ -37,6 +37,7 @@ const state = {
   sustainabilitySettings: [],
   vouchers: [],
   photos: [],
+  trash: { documents: [], vouchers: [], photos: [] },
   exports: [
     { name: "文化推廣補助計畫書.pdf", type: "PDF", time: "今天" },
     { name: "文化推廣補助簡報.pptx", type: "PPTX", time: "昨天" }
@@ -206,7 +207,9 @@ async function uploadProposalDocuments(files) {
       status: "draft",
       content: "",
       file_id: fileRow.id,
-      created_by: state.profile.id
+      created_by: state.profile.id,
+      reviewed_by: null,
+      reviewed_at: null
     };
     const { data, error } = await supabaseClient.from("proposal_documents").insert(documentRow).select("*").single();
     if (error) throw error;
@@ -320,6 +323,79 @@ async function deleteUploadedRecord(type, id) {
     showToast("資料已封存並從目前列表移除。");
   } catch (error) {
     showToast(`刪除失敗：${error.message}`);
+  }
+}
+
+function trashTable(type) {
+  return {
+    document: "proposal_documents",
+    voucher: "vouchers",
+    photo: "photos"
+  }[type];
+}
+
+function removeFromTrashState(type, id) {
+  const key = {
+    document: "documents",
+    voucher: "vouchers",
+    photo: "photos"
+  }[type];
+  if (key) state.trash[key] = state.trash[key].filter((item) => item.id !== id);
+}
+
+function activeStateKey(type) {
+  return {
+    document: "documents",
+    voucher: "vouchers",
+    photo: "photos"
+  }[type];
+}
+
+async function restoreTrashRecord(type, id) {
+  const table = trashTable(type);
+  const key = activeStateKey(type);
+  if (!table || !key) return;
+
+  const item = state.trash[key].find((record) => record.id === id);
+  if (!item) return;
+
+  try {
+    const nextStatus = type === "document" ? "draft" : type === "voucher" ? "pending" : "active";
+    const { error } = await supabaseClient.from(table).update({ status: nextStatus }).eq("id", id);
+    if (error) throw error;
+    if (item.file_id) await supabaseClient.from("files").update({ status: "active" }).eq("id", item.file_id);
+
+    item.status = nextStatus;
+    state[key].unshift(item);
+    removeFromTrashState(type, id);
+    renderAll();
+    showToast("資料已還原。");
+  } catch (error) {
+    showToast(`還原失敗：${error.message}`);
+  }
+}
+
+async function permanentlyDeleteTrashRecord(type, id) {
+  const table = trashTable(type);
+  const key = activeStateKey(type);
+  if (!table || !key) return;
+
+  const item = state.trash[key].find((record) => record.id === id);
+  if (!item) return;
+
+  const confirmed = window.confirm("確定永久刪除此筆資料嗎？這個動作無法復原。");
+  if (!confirmed) return;
+
+  try {
+    const { error } = await supabaseClient.from(table).delete().eq("id", id);
+    if (error) throw error;
+    if (item.file_id) await supabaseClient.from("files").delete().eq("id", item.file_id);
+
+    removeFromTrashState(type, id);
+    renderTrash();
+    showToast("資料已永久刪除。");
+  } catch (error) {
+    showToast(`永久刪除失敗：${error.message}`);
   }
 }
 
@@ -745,6 +821,48 @@ function renderReviewList() {
   });
 }
 
+function renderTrash() {
+  const list = $("#trashList");
+  const summary = $("#trashSummary");
+  if (!list || !summary) return;
+
+  const items = [
+    ...state.trash.documents.map((item) => ({ ...item, trashType: "document", typeLabel: "計畫書", name: item.title })),
+    ...state.trash.vouchers.map((item) => ({ ...item, trashType: "voucher", typeLabel: "憑證", name: item.file_name || item.invoice_number || item.voucher_type })),
+    ...state.trash.photos.map((item) => ({ ...item, trashType: "photo", typeLabel: "照片", name: item.caption || item.file_name }))
+  ];
+
+  summary.textContent = `${items.length} 筆封存`;
+
+  if (!items.length) {
+    list.innerHTML = `
+      <article class="trash-row">
+        <div>
+          <strong>目前沒有封存資料</strong>
+          <div class="meta">刪除的計畫書、憑證與照片會出現在這裡。</div>
+        </div>
+      </article>`;
+    return;
+  }
+
+  list.innerHTML = items
+    .map((item) => {
+      const project = projectById(item.project_id);
+      return `
+        <article class="trash-row">
+          <div>
+            <strong>${item.name || "未命名資料"}</strong>
+            <div class="meta">${item.typeLabel} ｜ ${project.name || "未指定案件"} ｜ 已封存</div>
+          </div>
+          <div class="row-actions">
+            <button class="secondary-btn" type="button" data-restore-type="${item.trashType}" data-restore-id="${item.id}">還原</button>
+            <button class="danger-btn" type="button" data-permanent-delete-type="${item.trashType}" data-permanent-delete-id="${item.id}">永久刪除</button>
+          </div>
+        </article>`;
+    })
+    .join("");
+}
+
 function applyPermissions() {
   const isAdmin = state.role === "admin";
   $("#roleLabel").textContent = isAdmin ? "管理者模式" : "客戶模式";
@@ -763,7 +881,7 @@ function applyPermissions() {
 }
 
 function switchView(viewId) {
-  if (viewId === "admin" && state.role !== "admin") {
+  if ((viewId === "admin" || viewId === "trash") && state.role !== "admin") {
     showToast("此區域需要管理者權限");
     viewId = "overview";
   }
@@ -788,13 +906,22 @@ async function loadSupabaseData() {
 
   if (projectsRes.error) throw projectsRes.error;
 
+  const allDocuments = docsRes.data?.length ? docsRes.data : demoDocuments;
+  const allVouchers = vouchersRes.data || [];
+  const allPhotos = photosRes.data || [];
+
   state.projects = projectsRes.data?.length ? projectsRes.data : demoProjects;
-  state.documents = docsRes.data?.length ? docsRes.data.filter((item) => item.status !== "archived") : demoDocuments;
+  state.documents = allDocuments.filter((item) => item.status !== "archived");
   state.closeoutReports = reportsRes.data || [];
   state.budgetSettings = budgetRes.data || [];
   state.sustainabilitySettings = sustainabilityRes.data || [];
-  state.vouchers = (vouchersRes.data || []).filter((item) => item.status !== "archived");
-  state.photos = (photosRes.data || []).filter((item) => item.status !== "archived");
+  state.vouchers = allVouchers.filter((item) => item.status !== "archived");
+  state.photos = allPhotos.filter((item) => item.status !== "archived");
+  state.trash = {
+    documents: allDocuments.filter((item) => item.status === "archived"),
+    vouchers: allVouchers.filter((item) => item.status === "archived"),
+    photos: allPhotos.filter((item) => item.status === "archived")
+  };
 
   if (state.budgetSettings[0]) {
     const { data } = await supabaseClient
@@ -832,6 +959,7 @@ function renderAll() {
   renderSlides();
   renderPermissions();
   renderReviewList();
+  renderTrash();
   applyPermissions();
 }
 
@@ -1041,6 +1169,18 @@ ESG 面向：${sustainability.esg.join("、")}
     const deleteButton = event.target.closest("[data-delete-type]");
     if (deleteButton) {
       deleteUploadedRecord(deleteButton.dataset.deleteType, deleteButton.dataset.deleteId);
+      return;
+    }
+
+    const restoreButton = event.target.closest("[data-restore-type]");
+    if (restoreButton) {
+      restoreTrashRecord(restoreButton.dataset.restoreType, restoreButton.dataset.restoreId);
+      return;
+    }
+
+    const permanentDeleteButton = event.target.closest("[data-permanent-delete-type]");
+    if (permanentDeleteButton) {
+      permanentlyDeleteTrashRecord(permanentDeleteButton.dataset.permanentDeleteType, permanentDeleteButton.dataset.permanentDeleteId);
       return;
     }
 

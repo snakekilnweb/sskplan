@@ -70,6 +70,7 @@
             <button class="nav-link" data-view="closeout"><span>06</span>結案報告</button>
             <p class="nav-title admin-only">管理</p>
             <button class="nav-link admin-only" data-view="admin"><span>07</span>管理後台</button>
+            <button class="nav-link admin-only" data-view="trash"><span>08</span>回收站</button>
           </nav>
           <section class="cross-filter" aria-label="交叉比對搜尋">
             <p class="nav-title">交叉比對搜尋</p>
@@ -465,6 +466,19 @@
                   <tr><td>數位服務導入</td><td>SDG 9、11、12、16</td><td>E 環境、G 治理</td><td>流程減量、紙本減量、資安/治理</td></tr>
                 </tbody>
               </table>
+            </section>
+          </section>
+          <section class="view" id="trash">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Recycle Bin</p>
+                  <h3>回收站</h3>
+                </div>
+                <span class="status review" id="trashSummary">封存資料</span>
+              </div>
+              <p class="library-summary">這裡顯示已刪除封存的計畫書、憑證與照片。可先還原，確認無誤後再永久刪除。</p>
+              <div class="trash-list" id="trashList"></div>
             </section>
           </section>
         </div>

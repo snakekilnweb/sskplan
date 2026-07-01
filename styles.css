@@ -843,13 +843,15 @@ nav {
 }
 
 .document-list,
-.export-list {
+.export-list,
+.trash-list {
   display: grid;
   gap: 10px;
 }
 
 .doc-row,
-.export-row {
+.export-row,
+.trash-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
@@ -883,7 +885,8 @@ nav {
 }
 
 .doc-row strong,
-.export-row strong {
+.export-row strong,
+.trash-row strong {
   display: block;
   margin-bottom: 5px;
 }
