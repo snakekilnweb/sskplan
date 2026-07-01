@@ -151,6 +151,123 @@ function projectById(projectId) {
   return state.projects.find((project) => project.id === projectId) || {};
 }
 
+function safeStorageName(name) {
+  const normalized = name.normalize("NFKD").replace(/[^\w.\-]+/g, "-");
+  return normalized.replace(/-+/g, "-").replace(/^-|-$/g, "") || `file-${Date.now()}`;
+}
+
+function selectedProjectId(selector = "#planSelect") {
+  return $(selector)?.value || state.projects[0]?.id || demoProjects[0]?.id || "unassigned";
+}
+
+async function uploadCaseFile({ bucket, file, projectId, fileType }) {
+  if (!state.session || !state.profile) {
+    throw new Error("請先登入後再上傳檔案。");
+  }
+
+  const companyId = state.profile.company_id || "shared";
+  const storageKey = `${companyId}/${projectId}/${Date.now()}-${safeStorageName(file.name)}`;
+  const uploadResult = await supabaseClient.storage.from(bucket).upload(storageKey, file, {
+    cacheControl: "3600",
+    upsert: false
+  });
+
+  if (uploadResult.error) throw uploadResult.error;
+
+  const publicUrl = supabaseClient.storage.from(bucket).getPublicUrl(storageKey).data.publicUrl;
+  const fileRecord = {
+    project_id: projectId,
+    company_id: companyId,
+    uploaded_by: state.profile.id,
+    file_type: fileType,
+    file_name: file.name,
+    file_url: publicUrl,
+    storage_key: storageKey,
+    mime_type: file.type || "application/octet-stream",
+    file_size: file.size,
+    status: "active"
+  };
+
+  const { data, error } = await supabaseClient.from("files").insert(fileRecord).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+async function uploadProposalDocuments(files) {
+  const projectId = selectedProjectId("#planSelect");
+  for (const file of files) {
+    const fileRow = await uploadCaseFile({ bucket: "proposal-files", file, projectId, fileType: "proposal" });
+    const project = projectById(projectId);
+    const documentRow = {
+      project_id: projectId,
+      title: file.name.replace(/\.[^.]+$/, ""),
+      year: project.year || new Date().getFullYear(),
+      version: 1,
+      status: "draft",
+      content: "",
+      file_id: fileRow.id,
+      created_by: state.profile.id
+    };
+    const { data, error } = await supabaseClient.from("proposal_documents").insert(documentRow).select("*").single();
+    if (error) throw error;
+    state.documents.unshift(data);
+  }
+  renderDocuments("recentDocs", 3);
+  renderDocuments("docLibrary", undefined, true);
+}
+
+async function uploadVouchers(files) {
+  const projectId = selectedProjectId("#voucherProject");
+  const voucherType = $("#voucherType")?.value || "憑證";
+  for (const file of files) {
+    const fileRow = await uploadCaseFile({ bucket: "vouchers", file, projectId, fileType: "voucher" });
+    const voucherRow = {
+      project_id: projectId,
+      file_id: fileRow.id,
+      voucher_type: voucherType,
+      amount: 0,
+      status: "pending"
+    };
+    const { data, error } = await supabaseClient.from("vouchers").insert(voucherRow).select("*").single();
+    if (error) throw error;
+    state.vouchers.unshift({ ...data, file_name: file.name });
+  }
+  renderVouchers();
+}
+
+async function uploadPhotos(files) {
+  const projectId = selectedProjectId("#photoProject");
+  const stage = $("#photoStage")?.value || "成果照片";
+  for (const file of files) {
+    const fileRow = await uploadCaseFile({ bucket: "photos", file, projectId, fileType: "photo" });
+    const photoRow = {
+      project_id: projectId,
+      file_id: fileRow.id,
+      stage,
+      caption: file.name.replace(/\.[^.]+$/, ""),
+      status: "active"
+    };
+    const { data, error } = await supabaseClient.from("photos").insert(photoRow).select("*").single();
+    if (error) throw error;
+    state.photos.unshift({ ...data, file_name: file.name });
+  }
+  renderPhotos();
+}
+
+async function handleSelectedFiles(event, uploader, doneMessage) {
+  const files = Array.from(event.target.files || []);
+  event.target.value = "";
+  if (!files.length) return;
+
+  try {
+    showToast(`正在上傳 ${files.length} 個檔案...`);
+    await uploader(files);
+    showToast(doneMessage);
+  } catch (error) {
+    showToast(`上傳失敗：${error.message}`);
+  }
+}
+
 function getDisplayDocuments() {
   const documents = state.documents.length ? state.documents : demoDocuments;
   const query = state.filters.search.trim().toLowerCase();
@@ -807,8 +924,17 @@ ESG 面向：${sustainability.esg.join("、")}
     renderExports();
     showToast("已建立匯出任務");
   });
-  $("#addVoucherBtn").addEventListener("click", () => showToast("正式版會開啟檔案選擇並上傳到 vouchers bucket"));
-  $("#addPhotoBtn").addEventListener("click", () => showToast("正式版會開啟照片選擇並上傳到 photos bucket"));
+  $("#documentFileInput").addEventListener("change", (event) =>
+    handleSelectedFiles(event, uploadProposalDocuments, "計畫書已上傳並建立文件紀錄。")
+  );
+  $("#voucherFileInput").addEventListener("change", (event) =>
+    handleSelectedFiles(event, uploadVouchers, "憑證已上傳並歸檔到案件。")
+  );
+  $("#photoFileInput").addEventListener("change", (event) =>
+    handleSelectedFiles(event, uploadPhotos, "照片已上傳並加入結案照片紀錄。")
+  );
+  $("#addVoucherBtn").addEventListener("click", () => $("#voucherFileInput").click());
+  $("#addPhotoBtn").addEventListener("click", () => $("#photoFileInput").click());
   $("#generateCloseoutBtn").addEventListener("click", () => {
     renderCloseout();
     showToast("已依現有資料產生結案報告草稿");
@@ -825,7 +951,7 @@ ESG 面向：${sustainability.esg.join("、")}
 
   document.body.addEventListener("click", (event) => {
     const action = event.target.dataset.action;
-    if (action === "upload") showToast("正式版會依公司ID/專案ID上傳檔案到 Storage");
+    if (action === "upload") $("#documentFileInput").click();
     if (action === "analyze") showToast("AI 分析下一步會串接後端 API");
     if (action === "download") showToast("正式版會下載 Storage 中的匯出檔");
     if (event.target.dataset.viewTarget === "admin") switchView("admin");

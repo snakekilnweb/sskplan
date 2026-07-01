@@ -336,6 +336,7 @@
                       </select>
                     </label>
                   </div>
+                  <input class="hidden-file" type="file" id="voucherFileInput" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple />
                   <button class="primary-btn" type="button" id="addVoucherBtn">新增憑證</button>
                 </div>
                 <div class="voucher-list" id="voucherList"></div>
@@ -361,6 +362,7 @@
                       </select>
                     </label>
                   </div>
+                  <input class="hidden-file" type="file" id="photoFileInput" accept="image/*" multiple />
                   <button class="primary-btn" type="button" id="addPhotoBtn">新增照片</button>
                 </div>
                 <div class="photo-list" id="photoList"></div>
@@ -468,6 +470,7 @@
         </div>
       </section>
     </main>
+    <input class="hidden-file" type="file" id="documentFileInput" accept=".pdf,.doc,.docx,.ppt,.pptx,.xlsx,.csv,.txt" multiple />
     <div class="toast" id="toast"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./app.js"></script>

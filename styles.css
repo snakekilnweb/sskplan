@@ -408,6 +408,10 @@ textarea {
   line-height: 1.5;
 }
 
+.hidden-file {
+  display: none;
+}
+
 .secondary-btn {
   background: #fff;
   color: var(--brand-dark);
