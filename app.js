@@ -126,6 +126,27 @@ function statusClass(status) {
   return STATUS_CLASS[status] || "draft";
 }
 
+function isPasswordRecoveryUrl() {
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return search.get("type") === "recovery" || hash.get("type") === "recovery";
+}
+
+function showPasswordResetPanel() {
+  $("#loginView").classList.remove("hidden");
+  $("#dashboardView").classList.add("hidden");
+  $("#resetPasswordPanel").classList.remove("hidden");
+  $("#password").required = false;
+  $("#newPassword").focus();
+}
+
+function hidePasswordResetPanel() {
+  $("#resetPasswordPanel").classList.add("hidden");
+  $("#password").required = true;
+  $("#newPassword").value = "";
+  $("#confirmPassword").value = "";
+}
+
 function projectById(projectId) {
   return state.projects.find((project) => project.id === projectId) || {};
 }
@@ -653,6 +674,52 @@ function bindEvents() {
     }
   });
 
+  $("#forgotPasswordBtn").addEventListener("click", async () => {
+    const email = $("#email").value.trim();
+
+    if (!email) {
+      showToast("請先輸入要重設密碼的 Email。");
+      $("#email").focus();
+      return;
+    }
+
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+
+    if (error) {
+      showToast(`重設信寄送失敗：${error.message}`);
+      return;
+    }
+
+    showToast("重設密碼信已寄出，請到信箱收信。");
+  });
+
+  $("#saveNewPasswordBtn").addEventListener("click", async () => {
+    const newPassword = $("#newPassword").value;
+    const confirmPassword = $("#confirmPassword").value;
+
+    if (newPassword.length < 6) {
+      showToast("新密碼至少需要 6 個字元。");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showToast("兩次輸入的新密碼不一致。");
+      return;
+    }
+
+    const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+
+    if (error) {
+      showToast(`密碼更新失敗：${error.message}`);
+      return;
+    }
+
+    hidePasswordResetPanel();
+    await supabaseClient.auth.signOut();
+    showToast("密碼已更新，請使用新密碼重新登入。");
+  });
+
   $("#logoutBtn").addEventListener("click", async () => {
     await supabaseClient.auth.signOut();
     state.session = null;
@@ -770,6 +837,18 @@ async function init() {
   state.projects = demoProjects;
   state.documents = demoDocuments;
   renderAll();
+
+  supabaseClient.auth.onAuthStateChange((event) => {
+    if (event === "PASSWORD_RECOVERY") {
+      showPasswordResetPanel();
+      showToast("請設定新密碼。");
+    }
+  });
+
+  if (isPasswordRecoveryUrl()) {
+    showPasswordResetPanel();
+    return;
+  }
 
   const { data } = await supabaseClient.auth.getSession();
   if (data.session) {

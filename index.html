@@ -39,6 +39,17 @@
           <label>帳號<input type="email" id="email" value="client@example.com" autocomplete="username" required /></label>
           <label>密碼<input type="password" id="password" value="" autocomplete="current-password" required /></label>
           <button class="primary-btn" type="submit">登入系統</button>
+          <button class="text-btn" type="button" id="forgotPasswordBtn">忘記密碼 / 寄送重設信</button>
+          <section class="reset-panel hidden" id="resetPasswordPanel" aria-label="重設密碼">
+            <div>
+              <p class="eyebrow">Reset Password</p>
+              <h3>設定新密碼</h3>
+              <small>請輸入新密碼，完成後再重新登入系統。</small>
+            </div>
+            <label>新密碼<input type="password" id="newPassword" autocomplete="new-password" /></label>
+            <label>確認新密碼<input type="password" id="confirmPassword" autocomplete="new-password" /></label>
+            <button class="primary-btn" type="button" id="saveNewPasswordBtn">更新密碼</button>
+          </section>
           <p class="hint">請使用 Supabase Authentication 建立的帳號登入，例如 admin@example.com 或 client@example.com。</p>
         </form>
       </section>
