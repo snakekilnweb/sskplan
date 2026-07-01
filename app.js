@@ -268,6 +268,61 @@ async function handleSelectedFiles(event, uploader, doneMessage) {
   }
 }
 
+async function archiveRecord(table, id) {
+  const { error } = await supabaseClient.from(table).update({ status: "archived" }).eq("id", id);
+  if (error) throw error;
+}
+
+async function deleteUploadedRecord(type, id) {
+  if (!id || id.startsWith("demo")) {
+    showToast("示範資料不會寫入資料庫，無需刪除。");
+    return;
+  }
+
+  const tableMap = {
+    document: "proposal_documents",
+    voucher: "vouchers",
+    photo: "photos"
+  };
+
+  const table = tableMap[type];
+  if (!table) return;
+
+  const confirmed = window.confirm("確定要刪除此筆資料嗎？系統會先封存紀錄，避免誤刪後無法復原。");
+  if (!confirmed) return;
+
+  try {
+    const sourceMap = {
+      document: state.documents,
+      voucher: state.vouchers,
+      photo: state.photos
+    };
+    const targetRecord = sourceMap[type]?.find((item) => item.id === id);
+
+    await archiveRecord(table, id);
+    if (targetRecord?.file_id) {
+      await archiveRecord("files", targetRecord.file_id);
+    }
+
+    if (type === "document") {
+      state.documents = state.documents.filter((item) => item.id !== id);
+      renderDocuments("recentDocs", 3);
+      renderDocuments("docLibrary", undefined, true);
+    }
+    if (type === "voucher") {
+      state.vouchers = state.vouchers.filter((item) => item.id !== id);
+      renderVouchers();
+    }
+    if (type === "photo") {
+      state.photos = state.photos.filter((item) => item.id !== id);
+      renderPhotos();
+    }
+    showToast("資料已封存並從目前列表移除。");
+  } catch (error) {
+    showToast(`刪除失敗：${error.message}`);
+  }
+}
+
 function getDisplayDocuments() {
   const documents = state.documents.length ? state.documents : demoDocuments;
   const query = state.filters.search.trim().toLowerCase();
@@ -313,7 +368,10 @@ function renderDocuments(targetId, limit, useFilters = false) {
             <strong>${doc.title || "未命名企劃書"}</strong>
             <div class="meta">${project.name || "未指定專案"} ｜ ${project.project_type || "未分類"} ｜ ${formatDate(doc.updated_at || doc.created_at)}</div>
           </div>
-          <span class="status ${statusClass(doc.status)}">${statusLabel(doc.status)}</span>
+          <div class="row-actions">
+            <span class="status ${statusClass(doc.status)}">${statusLabel(doc.status)}</span>
+            <button class="danger-btn" type="button" data-delete-type="document" data-delete-id="${doc.id}">刪除</button>
+          </div>
         </article>`;
     })
     .join("");
@@ -525,7 +583,10 @@ function renderVouchers() {
             <strong>${item.file_name || item.invoice_number || "未命名憑證"}</strong>
             <div class="meta">${item.voucher_type || "憑證"} ｜ ${formatMoney(item.amount)} ｜ ${statusLabel(item.status)}</div>
           </div>
-          <span class="status ${statusClass(item.status)}">${statusLabel(item.status)}</span>
+          <div class="row-actions">
+            <span class="status ${statusClass(item.status)}">${statusLabel(item.status)}</span>
+            <button class="danger-btn" type="button" data-delete-type="voucher" data-delete-id="${item.id || "demo-voucher"}">刪除</button>
+          </div>
         </article>`
     )
     .join("");
@@ -550,6 +611,33 @@ function renderPhotos() {
             <div class="meta">${item.stage || "活動紀錄"} ｜ ${item.location || "未填地點"} ｜ ${statusLabel(item.status)}</div>
           </div>
           <span class="status done">已歸檔</span>
+        </article>`
+    )
+    .join("");
+}
+
+function renderPhotos() {
+  const target = $("#photoList");
+  const photos = state.photos.length
+    ? state.photos
+    : [
+        { id: "demo-photo-1", caption: "成果活動照片", stage: "執行中", location: "未設定", status: "active" },
+        { id: "demo-photo-2", caption: "結案成果紀錄", stage: "成果完成", location: "未設定", status: "active" }
+      ];
+
+  target.innerHTML = photos
+    .map(
+      (item, index) => `
+        <article class="photo-row">
+          <div class="photo-thumb">照片 ${index + 1}</div>
+          <div>
+            <strong>${item.caption || item.file_name || "照片紀錄"}</strong>
+            <div class="meta">${item.stage || "照片紀錄"} ｜ ${item.location || "未設定地點"} ｜ ${statusLabel(item.status)}</div>
+          </div>
+          <div class="row-actions">
+            <span class="status done">已上傳</span>
+            <button class="danger-btn" type="button" data-delete-type="photo" data-delete-id="${item.id || "demo-photo"}">刪除</button>
+          </div>
         </article>`
     )
     .join("");
@@ -701,12 +789,12 @@ async function loadSupabaseData() {
   if (projectsRes.error) throw projectsRes.error;
 
   state.projects = projectsRes.data?.length ? projectsRes.data : demoProjects;
-  state.documents = docsRes.data?.length ? docsRes.data : demoDocuments;
+  state.documents = docsRes.data?.length ? docsRes.data.filter((item) => item.status !== "archived") : demoDocuments;
   state.closeoutReports = reportsRes.data || [];
   state.budgetSettings = budgetRes.data || [];
   state.sustainabilitySettings = sustainabilityRes.data || [];
-  state.vouchers = vouchersRes.data || [];
-  state.photos = photosRes.data || [];
+  state.vouchers = (vouchersRes.data || []).filter((item) => item.status !== "archived");
+  state.photos = (photosRes.data || []).filter((item) => item.status !== "archived");
 
   if (state.budgetSettings[0]) {
     const { data } = await supabaseClient
@@ -950,6 +1038,12 @@ ESG 面向：${sustainability.esg.join("、")}
   $("#saveSustainabilityBtn").addEventListener("click", () => showToast("SDGs / ESG 規則正式版會寫回 sustainability_settings 表"));
 
   document.body.addEventListener("click", (event) => {
+    const deleteButton = event.target.closest("[data-delete-type]");
+    if (deleteButton) {
+      deleteUploadedRecord(deleteButton.dataset.deleteType, deleteButton.dataset.deleteId);
+      return;
+    }
+
     const action = event.target.dataset.action;
     if (action === "upload") $("#documentFileInput").click();
     if (action === "analyze") showToast("AI 分析下一步會串接後端 API");

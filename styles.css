@@ -860,6 +860,28 @@ nav {
   border-radius: 8px;
 }
 
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.danger-btn {
+  min-height: 30px;
+  border: 1px solid #e3b7a4;
+  border-radius: 8px;
+  padding: 5px 10px;
+  background: #fff7f2;
+  color: #9d3f21;
+  font-weight: 900;
+}
+
+.danger-btn:hover {
+  background: #fbe7dc;
+}
+
 .doc-row strong,
 .export-row strong {
   display: block;
