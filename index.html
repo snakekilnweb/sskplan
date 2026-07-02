@@ -108,8 +108,7 @@
             <div><p class="eyebrow">目前專案</p><h2>智慧計畫書管理平台</h2></div>
             <div class="topbar-actions">
               <div class="search-box"><input type="search" placeholder="搜尋計畫書、標籤、客戶" /></div>
-              <button class="secondary-btn" data-action="upload">上傳</button>
-              <button class="primary-btn" data-action="analyze">AI 分析</button>
+              <button class="primary-btn" data-action="analyze">AI 助理</button>
             </div>
           </header>
           <section class="view active" id="overview">
@@ -156,7 +155,7 @@
                   <p class="eyebrow">Document Library</p>
                   <h3>計畫書庫</h3>
                 </div>
-                <div class="button-row"><button class="secondary-btn" data-action="upload">新增上傳</button><button class="primary-btn" data-action="analyze">AI 分析</button></div>
+                <div class="button-row"><button class="primary-btn" data-action="analyze">AI 分析</button></div>
               </div>
               <div class="library-tools">
                 <label>
@@ -198,6 +197,47 @@
                 </label>
               </div>
               <p class="library-summary" id="librarySummary">預設顯示草稿、審核中與退回修改文件。</p>
+              <section class="upload-classifier">
+                <div>
+                  <p class="eyebrow">Upload Classification</p>
+                  <h3>上傳前歸檔設定</h3>
+                  <small>上傳舊計畫書或新文件前，先指定案件、部會與計畫類別，AI 之後只會優先參考相同範圍的資料。</small>
+                </div>
+                <div class="upload-classifier-grid">
+                  <label>
+                    歸檔到哪個計畫
+                    <select id="uploadProject">
+                      <option value="市場拓展計畫">市場拓展計畫</option>
+                      <option value="政府補助申請企劃">政府補助申請企劃</option>
+                      <option value="智慧服務導入計畫">智慧服務導入計畫</option>
+                    </select>
+                  </label>
+                  <label>
+                    所屬部會
+                    <select id="uploadAgency">
+                      <option>文化部</option>
+                      <option>經濟部</option>
+                      <option>數位發展部</option>
+                      <option>教育部</option>
+                      <option>其他</option>
+                    </select>
+                  </label>
+                  <label>
+                    計畫類別
+                    <select id="uploadCategory">
+                      <option>文化補助</option>
+                      <option>政府補助</option>
+                      <option>商業企劃</option>
+                      <option>行銷方案</option>
+                      <option>企業內部專案</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="upload-classifier-actions">
+                  <button class="secondary-btn" type="button" data-action="upload">依上方分類新增上傳</button>
+                  <small>請先確認歸檔計畫、部會與類別，再選擇檔案上傳。</small>
+                </div>
+              </section>
               <div class="document-list expanded" id="docLibrary"></div>
             </div>
           </section>
@@ -473,6 +513,21 @@
                 <button class="primary-btn" type="button" id="savePermissionBtn">儲存權限</button>
               </div>
               <div class="permission-list" id="permissionList"></div>
+            </section>
+            <section class="panel template-settings">
+              <div class="panel-head">
+                <div><p class="eyebrow">Category Master</p><h3>計畫書分類主檔</h3></div>
+                <button class="primary-btn" type="button" id="saveCategoryBtn">儲存分類設定</button>
+              </div>
+              <p class="library-summary">管理者在這裡維護「哪個部會、哪個計畫類別、哪個計畫別」。上傳與 AI 編輯器會使用同一套分類，避免參考到不相關的舊案。</p>
+              <table>
+                <thead><tr><th>部會</th><th>計畫類別</th><th>計畫別/範本名稱</th><th>AI 參考關鍵字</th><th>狀態</th></tr></thead>
+                <tbody>
+                  <tr><td>文化部</td><td>文化補助</td><td>文化推廣補助計畫</td><td>傳統工藝、藝文推廣、人才培育</td><td><span class="status done">啟用</span></td></tr>
+                  <tr><td>經濟部</td><td>政府補助</td><td>市場拓展計畫</td><td>市場開發、商業模式、展會推廣</td><td><span class="status done">啟用</span></td></tr>
+                  <tr><td>數位發展部</td><td>企業內部專案</td><td>智慧服務導入計畫</td><td>系統導入、流程優化、資料治理</td><td><span class="status review">待確認</span></td></tr>
+                </tbody>
+              </table>
             </section>
             <section class="panel template-settings">
               <div class="panel-head">

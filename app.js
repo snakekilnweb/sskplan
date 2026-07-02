@@ -175,6 +175,29 @@ function referenceAgencyLabel(project = {}) {
   return "其他";
 }
 
+function documentClassification(doc) {
+  const project = projectById(doc.project_id);
+  const content = doc.content || "";
+  const classification = content.match(/分類：([^／\n]+)／([^\n]+)/);
+  const title = doc.title || "";
+
+  if (classification) {
+    return {
+      agency: classification[1].trim(),
+      category: classification[2].trim()
+    };
+  }
+
+  if (title.includes("城鄉") || title.includes("體驗") || title.includes("行程")) {
+    return { agency: "經濟部", category: "商業企劃" };
+  }
+
+  return {
+    agency: referenceAgencyLabel(project),
+    category: project.project_type || "未分類"
+  };
+}
+
 function safeStorageName(name) {
   const normalized = name.normalize("NFKD").replace(/[^\w.\-]+/g, "-");
   return normalized.replace(/-+/g, "-").replace(/^-|-$/g, "") || `file-${Date.now()}`;
@@ -295,7 +318,9 @@ async function uploadProposalDocuments(files) {
     throw new Error("請先按「建立新計畫」，再上傳計畫書。");
   }
 
-  const projectId = selectedProjectId("#planSelect");
+  const projectId = selectedProjectId("#uploadProject");
+  const uploadAgency = $("#uploadAgency")?.value || referenceAgencyLabel(projectById(projectId));
+  const uploadCategory = $("#uploadCategory")?.value || projectById(projectId).project_type || "未分類";
   for (const file of files) {
     const fileRow = await uploadCaseFile({ bucket: "proposal-files", file, projectId, fileType: "proposal" });
     const project = projectById(projectId);
@@ -305,7 +330,7 @@ async function uploadProposalDocuments(files) {
       year: project.year || new Date().getFullYear(),
       version: 1,
       status: "draft",
-      content: "",
+      content: `分類：${uploadAgency}／${uploadCategory}`,
       file_id: fileRow.id,
       created_by: state.profile.id,
       reviewed_by: null,
@@ -506,13 +531,14 @@ function getDisplayDocuments() {
 
   return documents.filter((doc) => {
     const project = projectById(doc.project_id);
-    const text = `${doc.title || ""} ${project.name || ""} ${project.project_type || ""} ${doc.status || ""}`.toLowerCase();
+    const classification = documentClassification(doc);
+    const text = `${doc.title || ""} ${project.name || ""} ${classification.agency || ""} ${classification.category || ""} ${project.project_type || ""} ${doc.status || ""}`.toLowerCase();
     const matchesSearch = !query || text.includes(query);
     const matchesStatus =
       !state.filters.status ||
       (state.filters.status === "active" ? activeStatuses.includes(doc.status || "draft") : statusLabel(doc.status) === state.filters.status);
-    const matchesAgency = !state.filters.agency || referenceAgencyLabel(project) === state.filters.agency;
-    const matchesCategory = !state.filters.category || project.project_type === state.filters.category;
+    const matchesAgency = !state.filters.agency || classification.agency === state.filters.agency;
+    const matchesCategory = !state.filters.category || classification.category === state.filters.category;
     return matchesSearch && matchesStatus && matchesAgency && matchesCategory;
   });
 }
@@ -539,11 +565,12 @@ function renderDocuments(targetId, limit, useFilters = false) {
   target.innerHTML = docs
     .map((doc) => {
       const project = projectById(doc.project_id);
+      const classification = documentClassification(doc);
       return `
         <article class="doc-row">
           <div>
             <strong>${doc.title || "未命名企劃書"}</strong>
-            <div class="meta">${project.name || "未指定專案"} ｜ ${project.project_type || "未分類"} ｜ ${formatDate(doc.updated_at || doc.created_at)}</div>
+            <div class="meta">${project.name || "未指定專案"} ｜ ${classification.agency} ｜ ${classification.category} ｜ ${formatDate(doc.updated_at || doc.created_at)}</div>
           </div>
           <div class="row-actions">
             <span class="status ${statusClass(doc.status)}">${statusLabel(doc.status)}</span>
@@ -573,7 +600,7 @@ function renderProjectOptions() {
     .map((project) => `<option value="${project.id}">${project.name}</option>`)
     .join("");
 
-  ["#planSelect", "#closeoutProject", "#voucherProject", "#photoProject"].forEach((selector) => {
+  ["#planSelect", "#closeoutProject", "#voucherProject", "#photoProject", "#uploadProject"].forEach((selector) => {
     const select = $(selector);
     if (select) select.innerHTML = optionHtml;
   });
@@ -1339,6 +1366,7 @@ ESG 面向：${sustainability.esg.join("、")}
     showToast("已建立結案報告匯出任務");
   });
   $("#savePermissionBtn").addEventListener("click", () => showToast("權限設定已套用於畫面，正式版會寫回 permissions 表"));
+  $("#saveCategoryBtn")?.addEventListener("click", () => showToast("分類主檔已套用於畫面，正式版會寫回計畫分類表"));
   $("#saveTemplateBtn").addEventListener("click", () => showToast("範本設定正式版會寫回 templates 表"));
   $("#saveSustainabilityBtn").addEventListener("click", () => showToast("SDGs / ESG 規則正式版會寫回 sustainability_settings 表"));
 
