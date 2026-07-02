@@ -830,7 +830,7 @@ nav {
 
 .library-tools {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(180px, 0.35fr) minmax(180px, 0.35fr);
+  grid-template-columns: minmax(260px, 1fr) repeat(3, minmax(160px, 0.32fr));
   gap: 12px;
   margin-bottom: 10px;
 }
@@ -948,6 +948,65 @@ nav {
   align-content: start;
 }
 
+.project-builder {
+  display: grid;
+  gap: 12px;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 6px;
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.mode-btn {
+  min-height: 38px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.mode-btn.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+.new-project-fields {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.name-suggestions {
+  display: grid;
+  gap: 8px;
+}
+
+.name-suggestion {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--brand-dark);
+  font-weight: 900;
+  text-align: left;
+}
+
+.name-suggestion:hover {
+  border-color: var(--brand);
+  background: #f7f2e8;
+}
+
 .year-reference {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -990,6 +1049,47 @@ nav {
   padding-left: 20px;
   color: var(--muted);
   line-height: 1.75;
+}
+
+.reference-scope {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.reference-scope h3 {
+  margin: 0;
+  color: var(--brand-dark);
+}
+
+.reference-match-list {
+  display: grid;
+  gap: 8px;
+}
+
+.reference-match {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.reference-match strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--brand-dark);
+}
+
+.reference-match small {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.reference-match.empty {
+  border-style: dashed;
 }
 
 .budget-card {

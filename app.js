@@ -1,4 +1,4 @@
-const SUPABASE_URL = "https://ddyrkfoatcxccgqqkowb.supabase.co";
+﻿const SUPABASE_URL = "https://ddyrkfoatcxccgqqkowb.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeXJrZm9hdGN4Y2NncXFrb3diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzA1MDIsImV4cCI6MjA5Njg0NjUwMn0.ntR5h1tDRHgs30PMDoZg_32kRqfIKrR8-At3wOUzczY";
 
@@ -152,6 +152,29 @@ function projectById(projectId) {
   return state.projects.find((project) => project.id === projectId) || {};
 }
 
+function projectAgency(project = {}) {
+  const text = `${project.agency || ""} ${project.ministry || ""} ${project.department || ""} ${project.project_type || ""} ${project.name || ""} ${project.description || ""}`;
+  if (text.includes("文化部") || text.includes("文化")) return "文化部";
+  if (text.includes("經濟部") || text.includes("市場") || text.includes("商業")) return "經濟部";
+  if (text.includes("數位發展部") || text.includes("數位") || text.includes("系統")) return "數位發展部";
+  if (text.includes("教育部") || text.includes("教育")) return "教育部";
+  return "其他";
+}
+
+function documentReferenceText(doc) {
+  const project = projectById(doc.project_id);
+  return `${doc.title || ""} ${doc.content || ""} ${project.name || ""} ${project.project_type || ""} ${project.description || ""}`.toLowerCase();
+}
+
+function referenceAgencyLabel(project = {}) {
+  const text = `${project.agency || ""} ${project.ministry || ""} ${project.department || ""} ${project.project_type || ""} ${project.name || ""} ${project.description || ""}`;
+  if (text.includes("文化部") || text.includes("文化") || text.includes("工藝")) return "文化部";
+  if (text.includes("經濟部") || text.includes("市場") || text.includes("商業")) return "經濟部";
+  if (text.includes("數位發展部") || text.includes("數位") || text.includes("系統")) return "數位發展部";
+  if (text.includes("教育部") || text.includes("教育") || text.includes("人才")) return "教育部";
+  return "其他";
+}
+
 function safeStorageName(name) {
   const normalized = name.normalize("NFKD").replace(/[^\w.\-]+/g, "-");
   return normalized.replace(/-+/g, "-").replace(/^-|-$/g, "") || `file-${Date.now()}`;
@@ -159,6 +182,78 @@ function safeStorageName(name) {
 
 function selectedProjectId(selector = "#planSelect") {
   return $(selector)?.value || state.projects[0]?.id || demoProjects[0]?.id || "unassigned";
+}
+
+function currentCompanyId() {
+  return state.profile?.company_id || state.projects[0]?.company_id || demoProjects[0]?.company_id || null;
+}
+
+function buildProjectNameSuggestions() {
+  const rawName = $("#newProjectName")?.value.trim();
+  const description = $("#newProjectDescription")?.value.trim();
+  const type = $("#newProjectType")?.value || "計畫";
+  const agency = $("#newProjectAgency")?.value || "";
+  const base = rawName || description.split(/[，。,.]/)[0] || type;
+  const cleanBase = base.replace(/計畫$/, "").trim() || type;
+
+  return [
+    `${cleanBase}計畫`,
+    `${cleanBase}與推廣應用計畫`,
+    `${cleanBase}傳承及成果推廣計畫`,
+    `${agency}${cleanBase}補助申請計畫`.replace(/^其他/, ""),
+    `${cleanBase}年度執行與效益提升計畫`
+  ].filter((item, index, array) => item && array.indexOf(item) === index).slice(0, 5);
+}
+
+function renderProjectNameSuggestions(names) {
+  const list = $("#projectNameSuggestions");
+  if (!list) return;
+
+  list.innerHTML = names
+    .map((name) => `<button class="name-suggestion" type="button" data-suggested-project-name="${name}">${name}</button>`)
+    .join("");
+}
+
+async function createNewProjectFromEditor() {
+  const name = $("#newProjectName")?.value.trim();
+  const description = $("#newProjectDescription")?.value.trim();
+  const year = Number($("#targetYear")?.value || new Date().getFullYear());
+  const projectType = $("#newProjectType")?.value || "未分類";
+  const agency = $("#newProjectAgency")?.value || "";
+  const companyId = currentCompanyId();
+
+  if (!name) {
+    showToast("請先輸入或選擇一個計畫名稱。");
+    $("#newProjectName")?.focus();
+    return;
+  }
+
+  if (!companyId) {
+    showToast("找不到公司資料，請先確認登入帳號已連到 profiles.company_id。");
+    return;
+  }
+
+  const projectRecord = {
+    company_id: companyId,
+    name,
+    year,
+    project_type: projectType,
+    status: "active",
+    description: description || `${agency ? `${agency}｜` : ""}${projectType}｜${name}`
+  };
+
+  try {
+    const { data, error } = await supabaseClient.from("projects").insert(projectRecord).select("*").single();
+    if (error) throw error;
+
+    state.projects.unshift(data);
+    renderProjectOptions();
+    $("#planSelect").value = data.id;
+    document.querySelector('[data-project-mode="existing"]')?.click();
+    showToast("新計畫已建立，可開始生成企劃書。");
+  } catch (error) {
+    showToast(`建立新計畫失敗：${error.message}`);
+  }
 }
 
 async function uploadCaseFile({ bucket, file, projectId, fileType }) {
@@ -195,6 +290,11 @@ async function uploadCaseFile({ bucket, file, projectId, fileType }) {
 }
 
 async function uploadProposalDocuments(files) {
+  const isNewMode = document.querySelector('[data-project-mode="new"]')?.classList.contains("active");
+  if (isNewMode) {
+    throw new Error("請先按「建立新計畫」，再上傳計畫書。");
+  }
+
   const projectId = selectedProjectId("#planSelect");
   for (const file of files) {
     const fileRow = await uploadCaseFile({ bucket: "proposal-files", file, projectId, fileType: "proposal" });
@@ -411,8 +511,9 @@ function getDisplayDocuments() {
     const matchesStatus =
       !state.filters.status ||
       (state.filters.status === "active" ? activeStatuses.includes(doc.status || "draft") : statusLabel(doc.status) === state.filters.status);
+    const matchesAgency = !state.filters.agency || referenceAgencyLabel(project) === state.filters.agency;
     const matchesCategory = !state.filters.category || project.project_type === state.filters.category;
-    return matchesSearch && matchesStatus && matchesCategory;
+    return matchesSearch && matchesStatus && matchesAgency && matchesCategory;
   });
 }
 
@@ -460,8 +561,10 @@ function updateLibrarySummary(count) {
   if (!librarySummary) return;
 
   const status = $("#docStatusFilter")?.value || "全部狀態";
+  const agency = $("#docAgencyFilter")?.value || "全部部會";
   const category = $("#docCategoryFilter")?.value || "全部分類";
-  librarySummary.textContent = `${status === "active" ? "待處理" : status || "全部狀態"} ｜ ${category}，共 ${count} 份文件。`;
+  const statusText = status === "active" ? "待處理" : status;
+  librarySummary.textContent = `${statusText} ｜ ${agency} ｜ ${category}，共 ${count} 份文件。`;
 }
 
 function renderProjectOptions() {
@@ -945,6 +1048,50 @@ async function loadProfile() {
   state.role = data.role || "customer";
 }
 
+function renderReferenceMatches() {
+  const list = $("#referenceMatchList");
+  if (!list) return;
+
+  const selectedProject = projectById($("#planSelect")?.value);
+  const selectedYear = $("#referenceYear")?.value;
+  const agencyFilter = $("#referenceAgencyFilter")?.value || referenceAgencyLabel(selectedProject);
+  const typeFilter = $("#referenceTypeFilter")?.value || selectedProject.project_type || "";
+  const keyword = ($("#referenceKeyword")?.value || "").trim().toLowerCase();
+  const documents = state.documents.length ? state.documents : demoDocuments;
+
+  const candidates = documents
+    .filter((doc) => doc.status !== "archived")
+    .map((doc) => ({ doc, project: projectById(doc.project_id) }))
+    .filter(({ doc, project }) => {
+      const sameAgency = !agencyFilter || referenceAgencyLabel(project) === agencyFilter;
+      const sameType =
+        !typeFilter ||
+        project.project_type === typeFilter ||
+        documentReferenceText(doc).includes(typeFilter.toLowerCase());
+      const sameYear = !selectedYear || String(doc.year || project.year || "").includes(String(selectedYear));
+      const keywordMatch = !keyword || documentReferenceText(doc).includes(keyword);
+      return sameAgency && sameType && sameYear && keywordMatch;
+    })
+    .slice(0, 5);
+
+  if (!candidates.length) {
+    list.innerHTML = `
+      <article class="reference-match empty">
+        <strong>尚未找到精準參考文件</strong>
+        <small>可放寬部會、類型或關鍵字，或先上傳同類型的舊計畫書。</small>
+      </article>`;
+    return;
+  }
+
+  list.innerHTML = candidates
+    .map(({ doc, project }) => `
+      <article class="reference-match">
+        <strong>${doc.title || "未命名計畫書"}</strong>
+        <small>${referenceAgencyLabel(project)} ｜ ${project.project_type || "未分類"} ｜ ${doc.year || project.year || "未設定年度"}</small>
+      </article>`)
+    .join("");
+}
+
 function renderAll() {
   renderProjectOptions();
   renderDocuments("recentDocs", 3);
@@ -959,6 +1106,7 @@ function renderAll() {
   renderSlides();
   renderPermissions();
   renderReviewList();
+  renderReferenceMatches();
   renderTrash();
   applyPermissions();
 }
@@ -1090,10 +1238,21 @@ function bindEvents() {
     renderDocuments("docLibrary", undefined, true);
   });
 
+  $("#docAgencyFilter").addEventListener("change", (event) => {
+    state.filters.agency = event.target.value;
+    renderDocuments("docLibrary", undefined, true);
+  });
+
   $("#docCategoryFilter").addEventListener("change", (event) => {
     state.filters.category = event.target.value;
     renderDocuments("docLibrary", undefined, true);
   });
+
+  ["#referenceAgencyFilter", "#referenceTypeFilter", "#referenceYear", "#planSelect"].forEach((selector) => {
+    $(selector)?.addEventListener("change", renderReferenceMatches);
+  });
+
+  $("#referenceKeyword")?.addEventListener("input", renderReferenceMatches);
 
   ["#budgetTotal", "#budgetGrant", "#budgetSelf"].forEach((selector) => {
     $(selector).addEventListener("input", updateBudgetSummary);
@@ -1151,6 +1310,24 @@ ESG 面向：${sustainability.esg.join("、")}
   );
   $("#addVoucherBtn").addEventListener("click", () => $("#voucherFileInput").click());
   $("#addPhotoBtn").addEventListener("click", () => $("#photoFileInput").click());
+
+  document.querySelectorAll("[data-project-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const isNew = button.dataset.projectMode === "new";
+      document.querySelectorAll("[data-project-mode]").forEach((item) => item.classList.remove("active"));
+      button.classList.add("active");
+      $("#newProjectFields").classList.toggle("hidden", !isNew);
+      document.querySelector(".existing-project-field")?.classList.toggle("hidden", isNew);
+    });
+  });
+
+  $("#suggestProjectNamesBtn").addEventListener("click", () => {
+    const names = buildProjectNameSuggestions();
+    renderProjectNameSuggestions(names);
+    showToast("已產生計畫名稱建議。");
+  });
+
+  $("#createProjectBtn").addEventListener("click", createNewProjectFromEditor);
   $("#generateCloseoutBtn").addEventListener("click", () => {
     renderCloseout();
     showToast("已依現有資料產生結案報告草稿");
@@ -1181,6 +1358,13 @@ ESG 面向：${sustainability.esg.join("、")}
     const permanentDeleteButton = event.target.closest("[data-permanent-delete-type]");
     if (permanentDeleteButton) {
       permanentlyDeleteTrashRecord(permanentDeleteButton.dataset.permanentDeleteType, permanentDeleteButton.dataset.permanentDeleteId);
+      return;
+    }
+
+    const suggestionButton = event.target.closest("[data-suggested-project-name]");
+    if (suggestionButton) {
+      $("#newProjectName").value = suggestionButton.dataset.suggestedProjectName;
+      showToast("已套用建議計畫名稱。");
       return;
     }
 

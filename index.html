@@ -176,6 +176,17 @@
                   </select>
                 </label>
                 <label>
+                  補助部會
+                  <select id="docAgencyFilter">
+                    <option value="">全部部會</option>
+                    <option>文化部</option>
+                    <option>經濟部</option>
+                    <option>數位發展部</option>
+                    <option>教育部</option>
+                    <option>其他</option>
+                  </select>
+                </label>
+                <label>
                   文件分類
                   <select id="docCategoryFilter">
                     <option value="">全部分類</option>
@@ -194,14 +205,33 @@
             <div class="editor-layout">
               <section class="panel editor-control">
                 <h3>AI 編輯指令</h3>
-                <label>
-                  計畫名稱
-                  <select id="planSelect">
-                    <option value="市場拓展計畫">市場拓展計畫</option>
-                    <option value="政府補助申請企劃">政府補助申請企劃</option>
-                    <option value="智慧服務導入計畫">智慧服務導入計畫</option>
-                  </select>
-                </label>
+                <section class="project-builder">
+                  <div class="mode-switch" role="tablist" aria-label="計畫建立模式">
+                    <button class="mode-btn active" type="button" data-project-mode="existing">使用既有計畫</button>
+                    <button class="mode-btn" type="button" data-project-mode="new">建立新計畫</button>
+                  </div>
+                  <label class="existing-project-field">
+                    既有計畫
+                    <select id="planSelect">
+                      <option value="市場拓展計畫">市場拓展計畫</option>
+                      <option value="政府補助申請企劃">政府補助申請企劃</option>
+                      <option value="智慧服務導入計畫">智慧服務導入計畫</option>
+                    </select>
+                  </label>
+                  <div class="new-project-fields hidden" id="newProjectFields">
+                    <label>新計畫名稱<input id="newProjectName" type="text" placeholder="例如：重要傳統工藝保存者傳習計畫" /></label>
+                    <label>計畫簡述<textarea id="newProjectDescription" rows="3" placeholder="請描述計畫目的、服務對象、執行重點，AI 會協助整理計畫名稱。"></textarea></label>
+                    <div class="year-reference">
+                      <label>計畫類型<select id="newProjectType"><option>文化補助</option><option>政府補助</option><option>商業企劃</option><option>行銷方案</option><option>企業內部專案</option></select></label>
+                      <label>補助部會<select id="newProjectAgency"><option>文化部</option><option>經濟部</option><option>數位發展部</option><option>教育部</option><option>其他</option></select></label>
+                    </div>
+                    <div class="button-row">
+                      <button class="secondary-btn" type="button" id="suggestProjectNamesBtn">AI 建議名稱</button>
+                      <button class="primary-btn" type="button" id="createProjectBtn">建立新計畫</button>
+                    </div>
+                    <div class="name-suggestions" id="projectNameSuggestions"></div>
+                  </div>
+                </section>
                 <div class="year-reference">
                   <label>
                     參照年度
@@ -234,6 +264,18 @@
                     <li>保留既有客群分析架構，新增年度 KPI 與預算配置。</li>
                     <li>修正去年審查意見：補強量化效益與風險因應。</li>
                   </ul>
+                </section>
+                <section class="reference-scope">
+                  <div>
+                    <p class="eyebrow">Reference Scope</p>
+                    <h3>AI 參考資料範圍</h3>
+                  </div>
+                  <div class="year-reference">
+                    <label>參考部會<select id="referenceAgencyFilter"><option value="">同計畫優先</option><option>文化部</option><option>經濟部</option><option>數位發展部</option><option>教育部</option><option>其他</option></select></label>
+                    <label>參考類型<select id="referenceTypeFilter"><option value="">同類型優先</option><option>文化補助</option><option>政府補助</option><option>商業企劃</option><option>行銷方案</option><option>企業內部專案</option></select></label>
+                  </div>
+                  <label>參考關鍵字<input id="referenceKeyword" type="search" placeholder="例如：傳統工藝、文化推廣、人才培育" /></label>
+                  <div class="reference-match-list" id="referenceMatchList"></div>
                 </section>
                 <section class="budget-card admin-managed">
                   <div class="panel-head">
